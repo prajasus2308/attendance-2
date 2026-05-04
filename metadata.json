@@ -1,0 +1,6 @@
+{
+  "name": "DAV MODEL Attendance System",
+  "description": "An attendance system for DAV Model School.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}
