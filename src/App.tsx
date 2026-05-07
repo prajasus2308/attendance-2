@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef, FormEvent } from 'react';
-import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings } from 'lucide-react';
+import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
+import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload } from 'lucide-react';
+import Papa from 'papaparse';
 import { QUOTES } from './constants';
 import { motion } from 'motion/react';
 import { detectFace, loadModels } from './services/faceRecognitionService';
@@ -80,7 +81,7 @@ const GuideModal = ({ onClose }: { onClose: () => void }) => {
             >
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-serif font-bold text-[#0F172A]">How to Use</h2>
-                    <button onClick={onClose} className="hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow"><X className="size-6 text-slate-400" /></button>
+                    <button onClick={onClose} className="glow-button"><X className="size-6 text-slate-400" /></button>
                 </div>
                 <div className="space-y-4 text-slate-700">
                     <section>
@@ -127,6 +128,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<{id: string, message: string}[]>([]);
   const [showGuide, setShowGuide] = useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
   const [attendanceThreshold, setAttendanceThreshold] = useState<number>(2);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState<Student | null>(null);
@@ -143,7 +145,7 @@ export default function App() {
   const DarkModeButton = () => (
     <button 
         onClick={() => setIsDarkMode(!isDarkMode)} 
-        className={`w-12 h-6 flex items-center ${isDarkMode ? 'bg-blue-600' : 'bg-gray-300'} rounded-full p-1 cursor-pointer transition-colors duration-300 focus:outline-none hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow`}
+        className={`w-12 h-6 flex items-center ${isDarkMode ? 'bg-blue-600' : 'bg-gray-300'} rounded-full p-1 cursor-pointer transition-colors duration-300 focus:outline-none glow-button`}
     >
         <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
     </button>
@@ -160,7 +162,7 @@ export default function App() {
         if (!isMounted) return;
         
         if (i <= studentName.length) {
-            setDisplayedName(studentName.substring(0, i));
+            setDisplayedName(studentName.substring(0, i) + (i < studentName.length ? '|' : ''));
             i++;
         } else {
             i = 0;
@@ -237,6 +239,8 @@ export default function App() {
         setStudents(updated);
         localStorage.setItem('students_list', JSON.stringify(updated));
       }
+    } else {
+      addNotification("Please fill in all student details.");
     }
   };
 
@@ -245,6 +249,8 @@ export default function App() {
     if (studentId === 'admin' && newStudentId === 'admin123') {
       setUserRole('admin');
       setLoggedInId('admin');
+    } else {
+      addNotification("Invalid admin credentials.");
     }
   };
 
@@ -342,6 +348,33 @@ export default function App() {
     localStorage.setItem('students_list', JSON.stringify(updated));
   }
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleBulkImport = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+        header: true,
+        complete: (results) => {
+            const parsedData = results.data as any[];
+            const newStudents = parsedData
+                .filter(d => d.id)
+                .map(d => ({
+                    id: d.id,
+                    className: d.className || 'N/A',
+                    section: d.section || 'N/A',
+                    name: d.name
+                }));
+            
+            const updated = [...students, ...newStudents.filter(s => !students.find(existing => existing.id === s.id))];
+            setStudents(updated);
+            localStorage.setItem('students_list', JSON.stringify(updated));
+            addNotification(`Imported ${newStudents.length} students!`);
+        }
+    });
+  };
+
   const deleteRecord = (id: string) => {
     const updated = attendanceRecords.filter(r => r.id !== id);
     setAttendanceRecords(updated);
@@ -404,11 +437,24 @@ export default function App() {
     if (studentSearchQuery && !r.studentId.toLowerCase().includes(studentSearchQuery.toLowerCase())) return false;
 
     return true;
+  }).sort((a, b) => {
+      if (sortOrder === 'newest') return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      if (sortOrder === 'oldest') return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      
+      const studentA = students.find(s => s.id === a.studentId);
+      const studentB = students.find(s => s.id === b.studentId);
+      const classA = studentA?.className || '';
+      const classB = studentB?.className || '';
+      
+      if (sortOrder === 'class-asc') return classA.localeCompare(classB);
+      if (sortOrder === 'class-desc') return classB.localeCompare(classA);
+      
+      return 0;
   });
 
   const exportAttendanceToCSV = () => {
     const headers = ["Student ID", "Timestamp"];
-    const rows = attendanceRecords.map(r => [r.studentId, r.timestamp]);
+    const rows = filteredRecords.map(r => [r.studentId, r.timestamp]);
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -450,7 +496,7 @@ export default function App() {
                 <a href="#features" className="hover:text-[#2563EB]">Features</a>
                 <DarkModeButton />
                 <button onClick={() => setShowGuide(true)} className="text-[#2563EB] font-bold">Help</button>
-                <button onClick={() => setStudentId('admin')} className="text-[#2563EB] font-bold hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow">Admin Login</button>
+                <button onClick={() => setStudentId('admin')} className="text-[#2563EB] font-bold glow-button">Admin Login</button>
             </nav>
           </header>
 
@@ -497,7 +543,7 @@ export default function App() {
                             required
                         />
                         )}
-                        <button type="submit" className="w-full bg-[#2563EB] text-white font-bold py-4 rounded-lg hover:bg-[#1d4ed8] transition-all shadow-lg shadow-[#2563EB]/20 uppercase tracking-wider text-sm hover:shadow-[0_0_15px_rgba(34,211,238,0.8)]">
+                        <button type="submit" className="w-full bg-[#2563EB] text-white font-bold py-4 rounded-lg hover:bg-[#1d4ed8] transition-all shadow-lg shadow-[#2563EB]/20 uppercase tracking-wider text-sm glow-button">
                         Login
                         </button>
                     </form>
@@ -551,11 +597,14 @@ export default function App() {
           <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900 p-4 md:p-8 font-sans">
           <header className="max-w-5xl mx-auto flex justify-between items-center mb-10 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <h1 className="text-3xl font-serif font-bold text-[#0F172A] flex items-center gap-3"><GraduationCap className="size-8 text-[#2563EB]" /> Admin Dashboard</h1>
-            <button onClick={handleLogout} className="text-[#0F172A]/60 dark:text-white/60 hover:text-red-600 flex items-center gap-2 font-bold transition-colors">
-              <LogOut className="size-5" /> Logout
-            </button>
-            <DarkModeButton />
-            <button onClick={() => setShowGuide(true)} className="text-[#2563EB] font-bold">Help</button>
+            <div className="flex items-center gap-4">
+              <button onClick={handleLogout} className="text-[#0F172A]/60 dark:text-white/60 hover:text-red-600 flex items-center gap-2 font-bold transition-colors glow-button">
+                <LogOut className="size-5" /> Logout
+              </button>
+              <DarkModeButton />
+              <button onClick={() => setShowGuide(true)} className="text-[#2563EB] font-bold">Help</button>
+            </div>
+
           </header>
           {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
           <main className="max-w-5xl mx-auto space-y-10">
@@ -567,7 +616,9 @@ export default function App() {
                 <div className="flex gap-4 mb-6">
                     <input type="text" value={newStudentId} onChange={e => setNewStudentId(e.target.value)} placeholder="New Student ID" className="flex-grow px-4 py-3 rounded-lg border border-slate-200 font-bold" />
                     <input type="text" value={newClass} onChange={e => setNewClass(e.target.value)} placeholder="Class" className="w-24 px-4 py-3 rounded-lg border border-slate-200 font-bold" />
-                    <button onClick={addStudent} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow"><Plus /></button>
+                    <button onClick={addStudent} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] glow-button"><Plus /></button>
+                    <input type="file" ref={fileInputRef} onChange={handleBulkImport} accept=".csv" className='hidden' />
+                    <button onClick={() => fileInputRef.current?.click()} className="bg-[#16A34A] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#15803d] flex items-center gap-2 glow-button"><Upload size={20}/></button>
                 </div>
                 <div className="relative mb-6">
                     <Search className="absolute left-4 top-3.5 size-5 text-slate-400" />
@@ -577,7 +628,7 @@ export default function App() {
                     {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).map(s => (
                         <div key={s.id} className="flex justify-between items-center p-4 bg-[#F8FAFC] rounded-lg">
                             <span className="font-bold text-[#0F172A]">{s.id} (Class: {s.className})</span>
-                            <button onClick={() => removeStudent(s.id)} className="text-red-500 hover:text-red-700 hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow"><Trash2 className="size-4" /></button>
+                            <button onClick={() => removeStudent(s.id)} className="text-red-500 hover:text-red-700 glow-button"><Trash2 className="size-4" /></button>
                         </div>
                     ))}
                 </div>
@@ -649,7 +700,13 @@ export default function App() {
                         <option value="all">All Classes</option>
                         {[...new Set(students.map(s => s.className))].filter(c => c !== 'N/A').map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
-                      <button onClick={exportAttendanceToCSV} className="text-sm font-bold text-[#2563EB] hover:text-[#1d4ed8] flex items-center gap-2 uppercase tracking-wide">
+                      <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
+                          <option value="newest">Newest First</option>
+                          <option value="oldest">Oldest First</option>
+                          <option value="class-asc">Class (A-Z)</option>
+                          <option value="class-desc">Class (Z-A)</option>
+                      </select>
+                      <button onClick={exportAttendanceToCSV} className="text-sm font-bold text-[#2563EB] glow-button px-4 py-2 rounded-lg border border-[#2563EB]/20 flex items-center gap-2 uppercase tracking-wide">
                           <Download className="size-4" /> Export CSV
                       </button>
                     </div>
@@ -713,7 +770,7 @@ export default function App() {
             <User className="size-5 text-[#2563EB]" />
             {loggedInId}
           </div>
-          <button onClick={handleLogout} className="text-[#0F172A]/60 dark:text-white/60 hover:text-red-600 flex items-center gap-2 font-bold transition-colors">
+          <button onClick={handleLogout} className="text-[#0F172A]/60 dark:text-white/60 hover:text-red-600 flex items-center gap-2 font-bold transition-colors glow-button">
             <LogOut className="size-5" /> Logout
           </button>
           <DarkModeButton />
@@ -729,10 +786,10 @@ export default function App() {
             <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6">Camera Attendance</h2>
             <video ref={videoRef} autoPlay playsInline className="mx-auto rounded-xl bg-[#0F172A] mb-6" width="320" height="240"></video>
             <p className="mb-4 text-[#0F172A]/70 font-bold">{message}</p>
-            <button onClick={takePhotoAndMarkAttendance} className="bg-[#16A34A] text-white px-8 py-3 rounded-lg font-bold w-full md:w-auto uppercase tracking-wide hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow">
+            <button onClick={takePhotoAndMarkAttendance} className="bg-[#16A34A] text-white px-8 py-3 rounded-lg font-bold w-full md:w-auto uppercase tracking-wide glow-button">
                 Take Photo & Mark Attendance
             </button>
-             <button onClick={() => {setShowFaceScanner(false); setMessage('')}} className="ml-4 text-slate-500 font-bold hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow">Close</button>
+             <button onClick={() => {setShowFaceScanner(false); setMessage('')}} className="ml-4 text-slate-500 font-bold glow-button">Close</button>
           </div>
         ) : (
           <div className="bg-[#0F172A] p-8 rounded-2xl shadow-lg flex items-center justify-between text-white">
@@ -741,7 +798,7 @@ export default function App() {
               <p className="text-[#F8FAFC]/70 font-medium mt-2">Mark your daily attendance.</p>
             </div>
             <div className="flex gap-3">
-                <button onClick={() => setShowFaceScanner(true)} className="flex items-center gap-3 bg-[#2563EB] text-white px-8 py-4 rounded-lg font-bold hover:bg-[#1d4ed8] transition-all uppercase tracking-wide text-sm hover:shadow-[0_0_15px_rgba(34,211,238,0.8)]">
+                <button onClick={() => setShowFaceScanner(true)} className="flex items-center gap-3 bg-[#2563EB] text-white px-8 py-4 rounded-lg font-bold hover:bg-[#1d4ed8] transition-all uppercase tracking-wide text-sm glow-button">
                   <Camera className="size-5" /> Take Photo & Mark
                 </button>
             </div>
@@ -756,7 +813,7 @@ export default function App() {
              <button onClick={() => {
                  setProfileData(students.find(s => s.id === loggedInId) || {id: loggedInId!, className: '', section: ''});
                  setIsEditingProfile(true);
-             }} className="text-sm bg-[#2563EB] text-white px-4 py-2 rounded-lg hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow">Edit</button>
+             }} className="text-sm bg-[#2563EB] text-white px-4 py-2 rounded-lg glow-button">Edit</button>
            </h2>
            {isEditingProfile ? (
               <div className="space-y-4">
@@ -766,8 +823,8 @@ export default function App() {
                  <label className="block text-sm font-bold text-slate-700">Upload Photo</label>
                  <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => { setProfileData({...profileData!, photoUrl: reader.result as string}); }; reader.readAsDataURL(file); } }} className="w-full px-4 py-2 border rounded" />
                  <textarea placeholder="Academic Details" value={profileData?.academicDetails || ''} onChange={e => setProfileData({...profileData!, academicDetails: e.target.value})} className="w-full px-4 py-2 border rounded" />
-                 <button onClick={updateProfile} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow">Save</button>
-                 <button onClick={() => setIsEditingProfile(false)} className="ml-2 text-slate-500 hover:shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-shadow">Cancel</button>
+                 <button onClick={updateProfile} className="bg-green-600 text-white px-4 py-2 rounded-lg glow-button">Save</button>
+                 <button onClick={() => setIsEditingProfile(false)} className="ml-2 text-slate-500 glow-button">Cancel</button>
               </div>
            ) : (
               <div className="grid grid-cols-2 gap-4 text-sm font-bold text-[#0F172A]">

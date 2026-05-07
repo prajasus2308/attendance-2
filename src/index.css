@@ -6,3 +6,9 @@
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
 }
 
+@layer components {
+  .glow-button {
+    @apply transition-shadow hover:shadow-[0_0_15px_rgba(59,130,246,0.8)];
+  }
+}
+
