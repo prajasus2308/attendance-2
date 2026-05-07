@@ -684,27 +684,10 @@ export default function App() {
                         <FileText className="size-6 text-[#2563EB]" /> Attendance Records
                     </h2>
                     <div className="flex items-center gap-4">
-                      <select value={filterPeriod} onChange={e => { setFilterPeriod(e.target.value); setFilterStartDate(''); setFilterEndDate(''); }} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
-                        <option value="all">All Time</option>
-                        <option value="week">Last 7 Days</option>
-                        <option value="month">Last 30 Days</option>
-                      </select>
                       <input type="text" placeholder="Search by Student ID" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
-                      {filterPeriod === 'all' && (
-                        <>
-                          <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
-                          <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
-                        </>
-                      )}
                       <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
                         <option value="all">All Classes</option>
                         {[...new Set(students.map(s => s.className))].filter(c => c !== 'N/A').map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
-                          <option value="newest">Newest First</option>
-                          <option value="oldest">Oldest First</option>
-                          <option value="class-asc">Class (A-Z)</option>
-                          <option value="class-desc">Class (Z-A)</option>
                       </select>
                       <button onClick={exportAttendanceToCSV} className="text-sm font-bold text-[#2563EB] glow-button px-4 py-2 rounded-lg border border-[#2563EB]/20 flex items-center gap-2 uppercase tracking-wide">
                           <Download className="size-4" /> Export CSV
