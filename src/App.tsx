@@ -686,9 +686,10 @@ export default function App() {
                         <option value="name-asc">Name (A-Z)</option>
                         <option value="name-desc">Name (Z-A)</option>
                     </select>
+                    <input type="text" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} placeholder="Search..." className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                    {[...students].sort((a,b) => {
+                    {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).sort((a,b) => {
                         if (studentSort === 'name-asc') return (a.name || '').localeCompare(b.name || '');
                         if (studentSort === 'name-desc') return (b.name || '').localeCompare(a.name || '');
                         return 0;
