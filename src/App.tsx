@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
 import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload } from 'lucide-react';
 import Papa from 'papaparse';
+
 import { QUOTES } from './constants';
 import { motion } from 'motion/react';
 import { detectFace, loadModels } from './services/faceRecognitionService';
@@ -133,6 +134,7 @@ export default function App() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState<Student | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [studentSort, setStudentSort] = useState('none');
 
   useEffect(() => {
     if (isDarkMode) {
@@ -473,12 +475,7 @@ export default function App() {
     addNotification('Profile updated successfully!');
   };
 
-  const dashboardContent = (
-    <div className="space-y-6">
-        <QuoteDisplay />
-        {/* Rest of the dashboard content will go here */}
-    </div>
-  );
+
 
   if (!userRole) {
     return (
@@ -673,6 +670,35 @@ export default function App() {
                         <div key={e.id} className="flex justify-between items-center p-4 bg-[#F8FAFC] rounded-lg">
                             <span className="font-bold text-[#0F172A]">{e.date} - {e.title} ({e.type})</span>
                             <button onClick={() => removeEvent(e.id)} className="text-red-500 hover:text-red-700"><Trash2 className="size-4" /></button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Student Profiles Viewer */}
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-3">
+                        <User className="size-6 text-[#2563EB]" /> Student Profiles
+                    </span>
+                    <select value={studentSort} onChange={e => setStudentSort(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
+                        <option value="none">Sort by</option>
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                    </select>
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    {[...students].sort((a,b) => {
+                        if (studentSort === 'name-asc') return (a.name || '').localeCompare(b.name || '');
+                        if (studentSort === 'name-desc') return (b.name || '').localeCompare(a.name || '');
+                        return 0;
+                    }).map(s => (
+                        <div key={s.id} className="p-4 bg-[#F8FAFC] rounded-lg border border-slate-200">
+                            {/* Assuming student object has a 'photo' property */}
+                            {s.photo && <img src={s.photo} alt={s.name} className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" />}
+                            <h3 className="font-bold text-center text-[#0F172A]">{s.name || 'N/A'}</h3>
+                            <p className="text-sm text-center text-slate-500">ID: {s.id}</p>
+                            <p className="text-sm text-center text-slate-500">Class: {s.className}</p>
                         </div>
                     ))}
                 </div>
