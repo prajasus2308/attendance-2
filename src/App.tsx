@@ -201,13 +201,6 @@ export default function App() {
             const recordDate = new Date(r.timestamp);
             return recordDate.toDateString() === todayStr;
         });
-
-        const deadline = new Date();
-        deadline.setHours(9, 0, 0, 0); // 9:00 AM deadline for marking
-
-        if (new Date() > deadline && !hasMarkedAttendanceToday) {
-             addNotification("Reminder: You haven't marked your attendance today!");
-        }
     }
 
     if (userRole === 'admin') {
@@ -297,16 +290,6 @@ export default function App() {
   const markAttendance = () => {
     if (!loggedInId || userRole !== 'student') return;
     
-    if (userRole !== 'admin') {
-        const now = new Date();
-        const deadline = new Date();
-        deadline.setHours(9, 0, 0, 0); 
-        if (now.getTime() > deadline.getTime()) {
-            addNotification('Attendance must be marked by 9:00 AM!');
-            return;
-        }
-    }
-
     const newRecord: AttendanceRecord = {
       id: Date.now().toString(),
       studentId: loggedInId,
@@ -367,15 +350,6 @@ export default function App() {
   }
 
   const startEdit = (record: AttendanceRecord) => {
-    if (userRole !== 'admin') {
-      const now = new Date();
-      const editDeadline = new Date();
-      editDeadline.setHours(7, 30, 0, 0);
-      if (now.getTime() > editDeadline.getTime()) {
-        addNotification('Editing is only allowed until 07:30 AM!');
-        return;
-      }
-    }
     setEditingId(record.id);
     setEditTimestamp(record.timestamp);
   }
@@ -425,6 +399,9 @@ export default function App() {
     // 2. Grade/Class filter
     const student = students.find(s => s.id === r.studentId);
     if (filterClass !== 'all' && student?.className !== filterClass) return false;
+
+    // 3. Student ID search
+    if (studentSearchQuery && !r.studentId.toLowerCase().includes(studentSearchQuery.toLowerCase())) return false;
 
     return true;
   });
@@ -661,6 +638,7 @@ export default function App() {
                         <option value="week">Last 7 Days</option>
                         <option value="month">Last 30 Days</option>
                       </select>
+                      <input type="text" placeholder="Search by Student ID" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
                       {filterPeriod === 'all' && (
                         <>
                           <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
