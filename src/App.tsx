@@ -99,6 +99,38 @@ const GuideModal = ({ onClose }: { onClose: () => void }) => {
     );
 };
 
+const Footer = () => (
+  <footer className="py-12 border-t border-slate-200 text-center text-slate-600 mt-10">
+    <p>&copy; 2026 Attendance Solutions.</p>
+    <p className="mt-4 text-[#2563EB] font-serif font-bold">Created by Pratyush Raj, Vedang, Anish, Khushagra, Sriyans</p>
+  </footer>
+);
+
+const TeamSection = () => {
+    const team = [
+        { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778249315889-c3c54a84-1ecc-4385-858e-c95a3a8cde2f.jpeg' },
+        { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
+        { name: 'Anish', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249817614-501c29a7-7991-469f-9da8-cffa18533fd3.jpeg' },
+        { name: 'Khushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
+        { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://via.placeholder.com/150' },
+    ];
+    return (
+        <section id="team" className="container mx-auto px-6 py-20">
+            <h3 className="text-4xl font-serif font-bold text-center mb-16">Meet Our Team</h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+                {team.map((member, i) => (
+                    <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
+                        <img src={member.imageUrl} alt={member.name} className="w-24 h-24 rounded-full mx-auto mb-4 object-cover" />
+                        <div className="text-2xl mb-2">{member.icon}</div>
+                        <h4 className="font-bold text-lg text-[#0F172A]">{member.name}</h4>
+                        <p className="text-[#2563EB] font-medium">{member.role}</p>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+};
+
 export default function App() {
   useEffect(() => {
     loadModels().catch(err => console.error('Failed to load models:', err));
@@ -575,13 +607,10 @@ export default function App() {
                     ))}
                 </div>
              </section>
+          <TeamSection />
           </main>
 
-          <footer className="py-12 border-t border-slate-200 text-center text-slate-500">
-              <p>&copy; 2026 Attendance Solutions.</p>
-              <p className="mt-2 text-emerald-800 font-semibold">Created by Pratyush Raj</p>
-              <p className="text-emerald-800 font-semibold font-serif">Sponsor: Pratyush Raj</p>
-          </footer>
+          <Footer />
       </div>
       </>
     );
@@ -911,11 +940,8 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="py-12 border-t border-slate-200 text-center text-slate-600 mt-10">
-        <p>&copy; 2026 Attendance Solutions.</p>
-        <h3 className="mt-4 text-lg text-[#2563EB] font-serif font-bold">Created by Pratyush Raj</h3>
-      </footer>
-    </div>
+          <Footer />
+        </div>
     </>
   );
 }
