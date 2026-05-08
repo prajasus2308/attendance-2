@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
-import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3 } from 'lucide-react';
 import Papa from 'papaparse';
 
 import { QUOTES } from './constants';
@@ -100,9 +101,9 @@ const GuideModal = ({ onClose }: { onClose: () => void }) => {
 };
 
 const Footer = () => (
-  <footer className="py-12 border-t border-slate-200 text-center text-slate-600 mt-10">
+  <footer className="py-12 border-t border-slate-200 text-center text-slate-600 mt-10 bg-slate-50">
     <p>&copy; 2026 Attendance Solutions.</p>
-    <p className="mt-4 text-[#2563EB] font-serif font-bold">Created by Pratyush Raj, Vedang, Anish, Khushagra, Sriyans</p>
+    <p className="mt-4 text-emerald-700 font-serif font-bold">Created by Pratyush Raj, Vedang, Anish, Khushagra, Sriyans, Hridyansh</p>
   </footer>
 );
 
@@ -113,6 +114,7 @@ const TeamSection = () => {
         { name: 'Anish', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249817614-501c29a7-7991-469f-9da8-cffa18533fd3.jpeg' },
         { name: 'Khushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
         { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778251044294-1fbb0df2-b124-42e4-af9c-2c128484a307.jpeg' },
+        { name: 'Hridyansh', role: 'Collaborator', icon: '🤝', imageUrl: 'https://via.placeholder.com/150' },
     ];
     return (
         <section id="team" className="container mx-auto px-6 py-20">
@@ -162,6 +164,7 @@ export default function App() {
   const [showGuide, setShowGuide] = useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest');
+  const [manualStudentId, setManualStudentId] = useState('');
   const [attendanceThreshold, setAttendanceThreshold] = useState<number>(2);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState<Student | null>(null);
@@ -342,6 +345,30 @@ export default function App() {
     setMessage('');
     addNotification('Attendance marked successfully!');
   };
+
+  const addManualAttendance = (studentId: string) => {
+    if (!students.find(s => s.id === studentId)) {
+        addNotification("Student not found!");
+        return;
+    }
+    const newRecord: AttendanceRecord = {
+      id: Date.now().toString(),
+      studentId: studentId,
+      timestamp: new Date().toLocaleString(),
+    };
+    const updatedRecords = [...attendanceRecords, newRecord];
+    setAttendanceRecords(updatedRecords);
+    localStorage.setItem('student_attendance', JSON.stringify(updatedRecords));
+    addNotification('Manual attendance added!');
+  };
+
+  // Group attendance by month for chart
+  const monthlyData = Object.entries(attendanceRecords.reduce((acc, record) => {
+      const month = new Date(record.timestamp).toLocaleString('default', { month: 'short' });
+      acc[month] = (acc[month] || 0) + 1;
+      return acc;
+  }, {} as Record<string, number>)).map(([month, count]) => ({ month, count }));
+
 
   const takePhotoAndMarkAttendance = async () => {
     if (!videoRef.current) return;
@@ -633,187 +660,198 @@ export default function App() {
         <>
           <NotificationToast notifications={notifications} />
           <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900 p-4 md:p-8 font-sans">
-          <header className="max-w-5xl mx-auto flex justify-between items-center mb-10 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <h1 className="text-3xl font-serif font-bold text-[#0F172A] flex items-center gap-3"><GraduationCap className="size-8 text-[#2563EB]" /> Admin Dashboard</h1>
-            <div className="flex items-center gap-4">
-              <button onClick={handleLogout} className="text-[#0F172A]/60 dark:text-white/60 hover:text-red-600 flex items-center gap-2 font-bold transition-colors glow-button">
-                <LogOut className="size-5" /> Logout
-              </button>
-              <DarkModeButton />
-              <button onClick={() => setShowGuide(true)} className="text-[#2563EB] font-bold">Help</button>
-            </div>
-
-          </header>
-          {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
-          <main className="max-w-5xl mx-auto space-y-10">
-            <QuoteDisplay />
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
-                    <Users className="size-6 text-[#2563EB]" /> Manage Students
-                </h2>
-                <div className="flex gap-4 mb-6">
-                    <input type="text" value={newStudentId} onChange={e => setNewStudentId(e.target.value)} placeholder="New Student ID" className="flex-grow px-4 py-3 rounded-lg border border-slate-200 font-bold" />
-                    <input type="text" value={newClass} onChange={e => setNewClass(e.target.value)} placeholder="Class" className="w-24 px-4 py-3 rounded-lg border border-slate-200 font-bold" />
-                    <button onClick={addStudent} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] glow-button"><Plus /></button>
-                    <input type="file" ref={fileInputRef} onChange={handleBulkImport} accept=".csv" className='hidden' />
-                    <button onClick={() => fileInputRef.current?.click()} className="bg-[#16A34A] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#15803d] flex items-center gap-2 glow-button"><Upload size={20}/></button>
-                </div>
-                <div className="relative mb-6">
-                    <Search className="absolute left-4 top-3.5 size-5 text-slate-400" />
-                    <input type="text" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} placeholder="Search students by ID or name..." className="w-full pl-12 pr-4 py-3 rounded-lg border border-slate-200 font-bold" />
-                </div>
-                <div className="space-y-2">
-                    {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).map(s => (
-                        <div key={s.id} className="flex justify-between items-center p-4 bg-[#F8FAFC] rounded-lg">
-                            <span className="font-bold text-[#0F172A]">{s.id} (Class: {s.className})</span>
-                            <button onClick={() => removeStudent(s.id)} className="text-red-500 hover:text-red-700 glow-button"><Trash2 className="size-4" /></button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
-                    <Settings className="size-6 text-[#2563EB]" /> Attendance Settings
-                </h2>
-                <div className="flex items-center gap-4">
-                    <label className="font-bold text-[#0F172A]">Low Attendance Threshold:</label>
-                    <input
-                        type="number"
-                        value={attendanceThreshold}
-                        onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            setAttendanceThreshold(val);
-                            localStorage.setItem('attendance_threshold', JSON.stringify(val));
-                        }}
-                        className="px-4 py-3 rounded-lg border border-slate-200 font-bold w-24"
-                    />
-                </div>
-            </div>
-
-            {/* Calendar Manager */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
-                    <Clock className="size-6 text-[#2563EB]" /> School Calendar
-                </h2>
-                <div className="flex gap-4 mb-6">
-                    <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} className="px-4 py-3 rounded-lg border border-slate-200 font-bold" />
-                    <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Event Title" className="flex-grow px-4 py-3 rounded-lg border border-slate-200 font-bold" />
-                    <select value={newType} onChange={e => setNewType(e.target.value as any)} className="px-4 py-3 rounded-lg border border-slate-200 font-bold">
-                        <option value="holiday">Holiday</option>
-                        <option value="exam">Exam</option>
-                        <option value="event">Event</option>
-                    </select>
-                    <button onClick={addEvent} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8]"><Plus /></button>
-                </div>
-                <div className="space-y-2">
-                    {calendarEvents.map(e => (
-                        <div key={e.id} className="flex justify-between items-center p-4 bg-[#F8FAFC] rounded-lg">
-                            <span className="font-bold text-[#0F172A]">{e.date} - {e.title} ({e.type})</span>
-                            <button onClick={() => removeEvent(e.id)} className="text-red-500 hover:text-red-700"><Trash2 className="size-4" /></button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Student Profiles Viewer */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-3">
-                        <User className="size-6 text-[#2563EB]" /> Student Profiles
-                    </span>
-                    <select value={studentSort} onChange={e => setStudentSort(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
-                        <option value="none">Sort by</option>
-                        <option value="name-asc">Name (A-Z)</option>
-                        <option value="name-desc">Name (Z-A)</option>
-                    </select>
-                    <input type="text" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} placeholder="Search..." className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
-                    <button onClick={handleDownloadStudentCSV} className="bg-[#16A34A] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#15803d] flex items-center gap-2 glow-button text-sm"><Download size={16}/> CSV</button>
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                    {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).sort((a,b) => {
-                        if (studentSort === 'name-asc') return (a.name || '').localeCompare(b.name || '');
-                        if (studentSort === 'name-desc') return (b.name || '').localeCompare(a.name || '');
-                        return 0;
-                    }).map(s => (
-                        <div key={s.id} className="p-4 bg-[#F8FAFC] rounded-lg border border-slate-200">
-                            {s.photoUrl ? (
-                                <img src={s.photoUrl} alt={s.name} className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" />
-                            ) : (
-                                <div className="w-20 h-20 rounded-full mx-auto mb-4 bg-slate-200 flex items-center justify-center">
-                                    <User className="size-10 text-slate-400" />
-                                </div>
-                            )}
-                            <h3 className="font-bold text-center text-[#0F172A]">{s.name || 'N/A'}</h3>
-                            <p className="text-sm text-center text-slate-500">ID: {s.id}</p>
-                            <p className="text-sm text-center text-slate-500">Class: {s.className}</p>
-                            {s.email && <p className="text-sm text-center text-slate-500">{s.email}</p>}
-                            {s.phone && <p className="text-sm text-center text-slate-500">{s.phone}</p>}
-                        </div>
-                    ))}
-                </div>
-            </div>
-            
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-2xl font-serif font-bold text-[#0F172A] flex items-center gap-3">
-                        <FileText className="size-6 text-[#2563EB]" /> Attendance Records
-                    </h2>
-                    <div className="flex items-center gap-4">
-                      <input type="text" placeholder="Search by Student ID" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
-                      <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
-                        <option value="all">All Classes</option>
-                        {[...new Set(students.map(s => s.className))].filter(c => c !== 'N/A').map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      <button onClick={exportAttendanceToCSV} className="text-sm font-bold text-[#2563EB] glow-button px-4 py-2 rounded-lg border border-[#2563EB]/20 flex items-center gap-2 uppercase tracking-wide">
-                          <Download className="size-4" /> Export CSV
+              <header className="max-w-5xl mx-auto flex justify-between items-center mb-10 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                  <h1 className="text-3xl font-serif font-bold text-[#0F172A] flex items-center gap-3"><GraduationCap className="size-8 text-[#2563EB]" /> Admin Dashboard</h1>
+                  <div className="flex items-center gap-4">
+                      <button onClick={handleLogout} className="text-[#0F172A]/60 dark:text-white/60 hover:text-red-600 flex items-center gap-2 font-bold transition-colors glow-button">
+                          <LogOut className="size-5" /> Logout
                       </button>
+                      <DarkModeButton />
+                      <button onClick={() => setShowGuide(true)} className="text-[#2563EB] font-bold">Help</button>
+                  </div>
+              </header>
+              {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+              <main className="max-w-5xl mx-auto space-y-10">
+                  <QuoteDisplay />
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                        <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
+                            <Users className="size-6 text-[#2563EB]" /> Manage Students
+                        </h2>
+                        <div className="flex gap-4 mb-6">
+                            <input type="text" value={newStudentId} onChange={e => setNewStudentId(e.target.value)} placeholder="New Student ID" className="flex-grow px-4 py-3 rounded-lg border border-slate-200 font-bold" />
+                            <input type="text" value={newClass} onChange={e => setNewClass(e.target.value)} placeholder="Class" className="w-24 px-4 py-3 rounded-lg border border-slate-200 font-bold" />
+                            <button onClick={addStudent} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] glow-button"><Plus /></button>
+                        </div>
+                        <div className="flex gap-4 mb-6">
+                            <input type="file" ref={fileInputRef} onChange={handleBulkImport} accept=".csv" className='hidden' />
+                            <button onClick={() => fileInputRef.current?.click()} className="flex-grow bg-[#16A34A] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#15803d] flex items-center justify-center gap-2 glow-button"><Upload size={20}/> Bulk Students</button>
+                        </div>
+                        <div className="relative mb-6">
+                            <Search className="absolute left-4 top-3.5 size-5 text-slate-400" />
+                            <input type="text" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} placeholder="Search students..." className="w-full pl-12 pr-4 py-3 rounded-lg border border-slate-200 font-bold" />
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 gap-y-4 flex flex-col">
+                        <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
+                            <Settings className="size-6 text-[#2563EB]" /> Settings
+                        </h2>
+                        <div className="flex items-center gap-4">
+                            <label className="font-bold text-[#0F172A]">Attendance Threshold:</label>
+                            <input type="number" value={attendanceThreshold} onChange={(e) => { const val = parseInt(e.target.value); setAttendanceThreshold(val); localStorage.setItem('attendance_threshold', JSON.stringify(val)); }} className="px-4 py-3 rounded-lg border border-slate-200 font-bold w-24" />
+                        </div>
+                        <h2 className="text-2xl font-serif font-bold text-[#0F172A] mt-6 mb-6 flex items-center gap-3">
+                            <Edit2 className="size-6 text-[#2563EB]" /> Manual Override
+                        </h2>
+                        <div className="flex gap-4">
+                            <input type="text" value={manualStudentId} onChange={e => setManualStudentId(e.target.value)} placeholder="Student ID" className="flex-grow px-4 py-3 rounded-lg border border-slate-200 font-bold" />
+                            <button onClick={() => { addManualAttendance(manualStudentId); setManualStudentId(''); }} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] glow-button">Mark Present</button>
+                        </div>
                     </div>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="border-b border-slate-100">
-                             <tr className="text-left text-xs uppercase tracking-widest text-[#0F172A]/50">
-                                <th className="pb-4">Student ID</th>
-                                <th className="pb-4">Timestamp</th>
-                                <th className="pb-4">Actions</th>
-                             </tr>
-                        </thead>
-                        <tbody>
-                            {filteredRecords.map(r => (
-                                <tr key={r.id} className="border-b border-slate-100">
-                                    <td className="py-4 font-bold text-[#0F172A]">{r.studentId}</td>
-                                    <td className="py-4 text-[#0F172A]/70">
-                                      {editingId === r.id ? 
-                                        <input type="text" value={editTimestamp} onChange={e => setEditTimestamp(e.target.value)} className="border rounded p-1" /> :
-                                        r.timestamp
-                                      }
-                                    </td>
-                                    <td className="py-4">
-                                      {editingId === r.id ? (
-                                        <div className="flex gap-2">
-                                            <button onClick={() => saveEdit(r.id)}><Save className="size-4 text-green-600" /></button>
-                                            <button onClick={() => setEditingId(null)}><X className="size-4 text-red-600" /></button>
-                                        </div>
-                                      ) : (
-                                        <div className="flex gap-2">
-                                            <button onClick={() => startEdit(r)}><Edit2 className="size-4 text-blue-600" /></button>
-                                            <button onClick={() => deleteRecord(r.id)}><Trash2 className="size-4 text-red-600" /></button>
-                                        </div>
-                                      )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                    <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
+                        <BarChart3 className="size-6 text-[#2563EB]" /> Attendance Trends
+                    </h2>
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={monthlyData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="count" fill="#2563EB" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
-            </div>
-            <footer className="py-12 border-t border-slate-200 text-center text-slate-600 mt-10">
-              <p>&copy; 2026 Attendance Solutions.</p>
-              <h3 className="mt-4 text-lg text-[#2563EB] font-serif font-bold">Created by Pratyush Raj</h3>
-            </footer>
-          </main>
-        </div>
+
+                <Footer />
+              </main>
+              
+              {/* Calendar Manager */}
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                  <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
+                      <Clock className="size-6 text-[#2563EB]" /> School Calendar
+                  </h2>
+                  <div className="flex gap-4 mb-6">
+                      <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} className="px-4 py-3 rounded-lg border border-slate-200 font-bold" />
+                      <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Event Title" className="flex-grow px-4 py-3 rounded-lg border border-slate-200 font-bold" />
+                      <select value={newType} onChange={e => setNewType(e.target.value as any)} className="px-4 py-3 rounded-lg border border-slate-200 font-bold">
+                          <option value="holiday">Holiday</option>
+                          <option value="exam">Exam</option>
+                          <option value="event">Event</option>
+                      </select>
+                      <button onClick={addEvent} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8]"><Plus /></button>
+                  </div>
+                  <div className="space-y-2">
+                      {calendarEvents.map(e => (
+                          <div key={e.id} className="flex justify-between items-center p-4 bg-[#F8FAFC] rounded-lg">
+                              <span className="font-bold text-[#0F172A]">{e.date} - {e.title} ({e.type})</span>
+                              <button onClick={() => removeEvent(e.id)} className="text-red-500 hover:text-red-700"><Trash2 className="size-4" /></button>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+
+              {/* Student Profiles Viewer */}
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                  <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-3">
+                          <User className="size-6 text-[#2563EB]" /> Student Profiles
+                      </span>
+                      <div className='flex gap-2'>
+                        <select value={studentSort} onChange={e => setStudentSort(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
+                            <option value="none">Sort by</option>
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                        </select>
+                        <input type="text" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} placeholder="Search..." className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
+                        <button onClick={handleDownloadStudentCSV} className="bg-[#16A34A] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#15803d] flex items-center gap-2 glow-button text-sm"><Download size={16}/> CSV</button>
+                      </div>
+                  </h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                      {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).sort((a,b) => {
+                          if (studentSort === 'name-asc') return (a.name || '').localeCompare(b.name || '');
+                          if (studentSort === 'name-desc') return (b.name || '').localeCompare(a.name || '');
+                          return 0;
+                      }).map(s => (
+                          <div key={s.id} className="p-4 bg-[#F8FAFC] rounded-lg border border-slate-200">
+                              {s.photoUrl ? (
+                                  <img src={s.photoUrl} alt={s.name} className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" />
+                              ) : (
+                                  <div className="w-20 h-20 rounded-full mx-auto mb-4 bg-slate-200 flex items-center justify-center">
+                                      <User className="size-10 text-slate-400" />
+                                  </div>
+                              )}
+                              <h3 className="font-bold text-center text-[#0F172A]">{s.name || 'N/A'}</h3>
+                              <p className="text-sm text-center text-slate-500">ID: {s.id}</p>
+                              <p className="text-sm text-center text-slate-500">Class: {s.className}</p>
+                              {s.email && <p className="text-sm text-center text-slate-500">{s.email}</p>}
+                              {s.phone && <p className="text-sm text-center text-slate-500">{s.phone}</p>}
+                          </div>
+                      ))}
+                  </div>
+              </div>
+              
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="flex justify-between items-center mb-8">
+                      <h2 className="text-2xl font-serif font-bold text-[#0F172A] flex items-center gap-3">
+                          <FileText className="size-6 text-[#2563EB]" /> Attendance Records
+                      </h2>
+                      <div className="flex items-center gap-4">
+                        <input type="text" placeholder="Search by Student ID" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
+                        <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
+                          <option value="all">All Classes</option>
+                          {[...new Set(students.map(s => s.className))].filter(c => c !== 'N/A').map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <button onClick={exportAttendanceToCSV} className="text-sm font-bold text-[#2563EB] glow-button px-4 py-2 rounded-lg border border-[#2563EB]/20 flex items-center gap-2 uppercase tracking-wide">
+                            <Download className="size-4" /> Export CSV
+                        </button>
+                      </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                      <table className="w-full">
+                          <thead className="border-b border-slate-100">
+                               <tr className="text-left text-xs uppercase tracking-widest text-[#0F172A]/50">
+                                  <th className="pb-4">Student ID</th>
+                                  <th className="pb-4">Timestamp</th>
+                                  <th className="pb-4">Actions</th>
+                               </tr>
+                          </thead>
+                          <tbody>
+                              {filteredRecords.map(r => (
+                                  <tr key={r.id} className="border-b border-slate-100">
+                                      <td className="py-4 font-bold text-[#0F172A]">{r.studentId}</td>
+                                      <td className="py-4 text-[#0F172A]/70">
+                                        {editingId === r.id ? 
+                                          <input type="text" value={editTimestamp} onChange={e => setEditTimestamp(e.target.value)} className="border rounded p-1" /> :
+                                          r.timestamp
+                                        }
+                                      </td>
+                                      <td className="py-4">
+                                        {editingId === r.id ? (
+                                          <div className="flex gap-2">
+                                              <button onClick={() => saveEdit(r.id)}><Save className="size-4 text-green-600" /></button>
+                                              <button onClick={() => setEditingId(null)}><X className="size-4 text-red-600" /></button>
+                                          </div>
+                                        ) : (
+                                          <div className="flex gap-2">
+                                              <button onClick={() => startEdit(r)}><Edit2 className="size-4 text-blue-600" /></button>
+                                              <button onClick={() => deleteRecord(r.id)}><Trash2 className="size-4 text-red-600" /></button>
+                                          </div>
+                                        )}
+                                      </td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          </div>
         </>
       );
   }
