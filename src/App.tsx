@@ -114,7 +114,7 @@ const TeamSection = () => {
         { name: 'Anish', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249817614-501c29a7-7991-469f-9da8-cffa18533fd3.jpeg' },
         { name: 'Khushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
         { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778251044294-1fbb0df2-b124-42e4-af9c-2c128484a307.jpeg' },
-        { name: 'Hridyansh', role: 'Collaborator', icon: '🤝', imageUrl: 'https://via.placeholder.com/150' },
+        { name: 'Hridyansh', role: 'Collaborator', icon: '🤝', imageUrl: 'https://th.bing.com/th/id/OIP.4A4iwzRKJEz5nWjYh8rwDwHaHa?r=0&o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3' },
     ];
     return (
         <section id="team" className="container mx-auto px-6 py-20">
