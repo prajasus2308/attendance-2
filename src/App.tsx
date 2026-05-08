@@ -405,6 +405,7 @@ export default function App() {
   }
 
   const removeStudent = (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this student?')) return;
     const updated = students.filter(s => s.id !== id);
     setStudents(updated);
     localStorage.setItem('students_list', JSON.stringify(updated));
@@ -438,6 +439,7 @@ export default function App() {
   };
 
   const deleteRecord = (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this attendance record?')) return;
     const updated = attendanceRecords.filter(r => r.id !== id);
     setAttendanceRecords(updated);
     localStorage.setItem('student_attendance', JSON.stringify(updated));
