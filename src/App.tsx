@@ -109,7 +109,7 @@ const Footer = () => (
 
 const TeamSection = () => {
     const team = [
-        { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778249315889-c3c54a84-1ecc-4385-858e-c95a3a8cde2f.jpeg' },
+        { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778261116467-97d858db-1422-4f0e-8ab3-ac010e4c4f89.png' },
         { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
         { name: 'Anish', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249817614-501c29a7-7991-469f-9da8-cffa18533fd3.jpeg' },
         { name: 'Khushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
