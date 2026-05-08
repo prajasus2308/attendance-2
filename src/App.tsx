@@ -112,7 +112,7 @@ const TeamSection = () => {
         { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
         { name: 'Anish', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249817614-501c29a7-7991-469f-9da8-cffa18533fd3.jpeg' },
         { name: 'Khushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
-        { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://via.placeholder.com/150' },
+        { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778251044294-1fbb0df2-b124-42e4-af9c-2c128484a307.jpeg' },
     ];
     return (
         <section id="team" className="container mx-auto px-6 py-20">
@@ -498,6 +498,18 @@ export default function App() {
     a.click();
   };
 
+  const handleDownloadStudentCSV = () => {
+    const headers = ["ID", "Class", "Section", "Name"];
+    const rows = students.map(s => [s.id, s.className, s.section, s.name || '']);
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_list.csv';
+    a.click();
+  };
+
   const updateProfile = () => {
     if (!profileData) return;
     const updated = students.map(s => s.id === profileData.id ? profileData : s);
@@ -716,6 +728,7 @@ export default function App() {
                         <option value="name-desc">Name (Z-A)</option>
                     </select>
                     <input type="text" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} placeholder="Search..." className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
+                    <button onClick={handleDownloadStudentCSV} className="bg-[#16A34A] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#15803d] flex items-center gap-2 glow-button text-sm"><Download size={16}/> CSV</button>
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                     {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).sort((a,b) => {
@@ -724,11 +737,18 @@ export default function App() {
                         return 0;
                     }).map(s => (
                         <div key={s.id} className="p-4 bg-[#F8FAFC] rounded-lg border border-slate-200">
-                            {/* Assuming student object has a 'photo' property */}
-                            {s.photo && <img src={s.photo} alt={s.name} className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" />}
+                            {s.photoUrl ? (
+                                <img src={s.photoUrl} alt={s.name} className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" />
+                            ) : (
+                                <div className="w-20 h-20 rounded-full mx-auto mb-4 bg-slate-200 flex items-center justify-center">
+                                    <User className="size-10 text-slate-400" />
+                                </div>
+                            )}
                             <h3 className="font-bold text-center text-[#0F172A]">{s.name || 'N/A'}</h3>
                             <p className="text-sm text-center text-slate-500">ID: {s.id}</p>
                             <p className="text-sm text-center text-slate-500">Class: {s.className}</p>
+                            {s.email && <p className="text-sm text-center text-slate-500">{s.email}</p>}
+                            {s.phone && <p className="text-sm text-center text-slate-500">{s.phone}</p>}
                         </div>
                     ))}
                 </div>
