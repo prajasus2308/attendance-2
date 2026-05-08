@@ -165,12 +165,45 @@ export default function App() {
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest');
   const [manualStudentId, setManualStudentId] = useState('');
+  const [adminPassword, setAdminPassword] = useState(() => localStorage.getItem('admin_password') || 'admin123');
   const [attendanceThreshold, setAttendanceThreshold] = useState<number>(2);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState<Student | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [studentSort, setStudentSort] = useState('none');
   const [calendarSearchQuery, setCalendarSearchQuery] = useState('');
+
+  // Admin Change Password Modal
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+
+  const changeAdminPassword = () => {
+      if (currentPass === adminPassword) {
+          localStorage.setItem('admin_password', newPass);
+          setAdminPassword(newPass);
+          addNotification('Password updated successfully!');
+          setShowPasswordModal(false);
+          setCurrentPass('');
+          setNewPass('');
+      } else {
+          addNotification('Incorrect current password!');
+      }
+  };
+
+  const ChangePasswordModal = () => (
+      <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm">
+              <h2 className="text-xl font-bold mb-4">Change Admin Password</h2>
+              <input type="password" placeholder="Current Password" value={currentPass} onChange={e => setCurrentPass(e.target.value)} className="w-full p-3 mb-4 rounded-lg border border-slate-200" />
+              <input type="password" placeholder="New Password" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full p-3 mb-4 rounded-lg border border-slate-200" />
+              <div className="flex justify-end gap-2">
+                  <button onClick={() => setShowPasswordModal(false)} className="text-slate-500">Cancel</button>
+                  <button onClick={changeAdminPassword} className="bg-blue-600 text-white p-2 rounded-lg">Update</button>
+              </div>
+          </div>
+      </div>
+  );
 
   useEffect(() => {
     if (isDarkMode) {
@@ -284,7 +317,7 @@ export default function App() {
 
   const handleAdminLogin = (e: FormEvent) => {
     e.preventDefault();
-    if (studentId === 'admin' && newStudentId === 'admin123') {
+    if (studentId === 'admin' && newStudentId === adminPassword) {
       setUserRole('admin');
       setLoggedInId('admin');
     } else {
@@ -666,6 +699,7 @@ export default function App() {
               <header className="max-w-5xl mx-auto flex justify-between items-center mb-10 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                   <h1 className="text-3xl font-serif font-bold text-[#0F172A] flex items-center gap-3"><GraduationCap className="size-8 text-[#2563EB]" /> Admin Dashboard</h1>
                   <div className="flex items-center gap-4">
+                      <button onClick={() => setShowPasswordModal(true)} className="text-[#2563EB] font-bold">Change Password</button>
                       <button onClick={handleLogout} className="text-[#0F172A]/60 dark:text-white/60 hover:text-red-600 flex items-center gap-2 font-bold transition-colors glow-button">
                           <LogOut className="size-5" /> Logout
                       </button>
@@ -674,6 +708,7 @@ export default function App() {
                   </div>
               </header>
               {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+              {showPasswordModal && <ChangePasswordModal />}
               <main className="max-w-5xl mx-auto space-y-10">
                   <QuoteDisplay />
                   <div className="grid md:grid-cols-2 gap-8">
