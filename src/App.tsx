@@ -781,9 +781,11 @@ export default function App() {
                       {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).sort((a,b) => {
                           if (studentSort === 'name-asc') return (a.name || '').localeCompare(b.name || '');
                           if (studentSort === 'name-desc') return (b.name || '').localeCompare(a.name || '');
-                          return 0;
-                      }).map(s => (
-                          <div key={s.id} className="p-4 bg-[#F8FAFC] rounded-lg border border-slate-200">
+                       }).map(s => {
+                          const attendanceCount = attendanceRecords.filter(r => r.studentId === s.id).length;
+                          const isLow = attendanceCount < attendanceThreshold;
+                          return (
+                          <div key={s.id} className={`p-4 rounded-lg border ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
                               {s.photoUrl ? (
                                   <img src={s.photoUrl} alt={s.name} className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" />
                               ) : (
@@ -794,10 +796,12 @@ export default function App() {
                               <h3 className="font-bold text-center text-[#0F172A]">{s.name || 'N/A'}</h3>
                               <p className="text-sm text-center text-slate-500">ID: {s.id}</p>
                               <p className="text-sm text-center text-slate-500">Class: {s.className}</p>
+                              <p className={`text-sm text-center font-bold ${isLow ? 'text-red-600' : 'text-slate-500'}`}>Attendance: {attendanceCount}</p>
                               {s.email && <p className="text-sm text-center text-slate-500">{s.email}</p>}
                               {s.phone && <p className="text-sm text-center text-slate-500">{s.phone}</p>}
+                              {isLow && <p className="text-xs text-center text-red-600 font-bold mt-2">Low Attendance!</p>}
                           </div>
-                      ))}
+                      )})}
                   </div>
               </div>
               
