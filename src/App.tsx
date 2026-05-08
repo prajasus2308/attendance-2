@@ -170,6 +170,7 @@ export default function App() {
   const [profileData, setProfileData] = useState<Student | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [studentSort, setStudentSort] = useState('none');
+  const [calendarSearchQuery, setCalendarSearchQuery] = useState('');
 
   useEffect(() => {
     if (isDarkMode) {
@@ -747,8 +748,9 @@ export default function App() {
                       </select>
                       <button onClick={addEvent} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8]"><Plus /></button>
                   </div>
+                  <input type="text" value={calendarSearchQuery} onChange={e => setCalendarSearchQuery(e.target.value)} placeholder="Search events..." className="w-full px-4 py-3 rounded-lg border border-slate-200 font-bold mb-6" />
                   <div className="space-y-2">
-                      {calendarEvents.map(e => (
+                      {calendarEvents.filter(e => e.title.toLowerCase().includes(calendarSearchQuery.toLowerCase())).map(e => (
                           <div key={e.id} className="flex justify-between items-center p-4 bg-[#F8FAFC] rounded-lg">
                               <span className="font-bold text-[#0F172A]">{e.date} - {e.title} ({e.type})</span>
                               <button onClick={() => removeEvent(e.id)} className="text-red-500 hover:text-red-700"><Trash2 className="size-4" /></button>
