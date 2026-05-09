@@ -111,7 +111,7 @@ const TeamSection = () => {
     const team = [
         { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778261116467-97d858db-1422-4f0e-8ab3-ac010e4c4f89.png' },
         { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
-        { name: 'Anish', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249817614-501c29a7-7991-469f-9da8-cffa18533fd3.jpeg' },
+        { name: 'Anish', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778261769527-c561fcd2-1343-4c2e-8b80-5dc9ef50fd48.jpeg' },
         { name: 'Khushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
         { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778251044294-1fbb0df2-b124-42e4-af9c-2c128484a307.jpeg' },
         { name: 'Hridyansh', role: 'Collaborator', icon: '🤝', imageUrl: 'https://th.bing.com/th/id/OIP.4A4iwzRKJEz5nWjYh8rwDwHaHa?r=0&o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3' },
