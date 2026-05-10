@@ -46,6 +46,7 @@ interface AttendanceRecord {
   id: string;
   studentId: string;
   timestamp: string;
+  photoData?: string;
 }
 
 interface CalendarEvent {
@@ -79,20 +80,29 @@ const GuideModal = ({ onClose }: { onClose: () => void }) => {
             <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg"
+                className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto"
             >
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-serif font-bold text-[#0F172A]">How to Use</h2>
+                    <h2 className="text-2xl font-serif font-bold text-[#0F172A]">Platform Guide & Transparency</h2>
                     <button onClick={onClose} className="glow-button"><X className="size-6 text-slate-400" /></button>
                 </div>
-                <div className="space-y-4 text-slate-700">
+                <div className="space-y-6 text-slate-700">
                     <section>
-                        <h3 className="font-bold text-[#2563EB]">For Students</h3>
-                        <p className="text-sm">Log in with your ID to view attendance. Click "Take Photo & Mark" to mark your attendance.</p>
+                        <h3 className="font-bold text-[#2563EB] mb-2">For Students</h3>
+                        <p className="text-sm">Log in with your ID to view attendance. Click "Take Photo & Mark" to mark your attendance using our face recognition engine.</p>
                     </section>
                     <section>
-                        <h3 className="font-bold text-[#2563EB]">For Administrators</h3>
-                        <p className="text-sm">Log in as admin to manage students, view reports, or export records to CSV.</p>
+                        <h3 className="font-bold text-[#2563EB] mb-2">For Administrators</h3>
+                        <p className="text-sm">Log in as admin to manage student lists, view monthly attendance trends, adjust attendance thresholds, and manually override records.</p>
+                    </section>
+                    <section>
+                        <h3 className="font-bold text-[#2563EB] mb-2">Architecture & Data Privacy</h3>
+                        <p className="text-sm">
+                            This application uses a client-side architecture for real-time responsiveness. Data is stored locally in your browser's <code>localStorage</code>.
+                        </p>
+                        <p className="text-sm mt-2">
+                            Face recognition is performed entirely in your browser using local models, ensuring sensitive biometric data is never transmitted to a server.
+                        </p>
                     </section>
                 </div>
             </motion.div>
@@ -109,12 +119,12 @@ const Footer = () => (
 
 const TeamSection = () => {
     const team = [
-        { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778261116467-97d858db-1422-4f0e-8ab3-ac010e4c4f89.png' },
+        { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778249315889-c3c54a84-1ecc-4385-858e-c95a3a8cde2f.jpeg' },
         { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
         { name: 'Anish', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778261769527-c561fcd2-1343-4c2e-8b80-5dc9ef50fd48.jpeg' },
         { name: 'Khushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
         { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778251044294-1fbb0df2-b124-42e4-af9c-2c128484a307.jpeg' },
-        { name: 'Hridyansh', role: 'Collaborator', icon: '🤝', imageUrl: 'https://th.bing.com/th/id/OIP.4A4iwzRKJEz5nWjYh8rwDwHaHa?r=0&o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3' },
+        { name: 'Hridyansh', role: 'Collaborator', icon: '🤝', imageUrl: 'https://via.placeholder.com/150' },
     ];
     return (
         <section id="team" className="container mx-auto px-6 py-20">
@@ -331,13 +341,14 @@ export default function App() {
     };
   }, [showFaceScanner]);
 
-  const markAttendance = () => {
+  const markAttendance = (photoData?: string) => {
     if (!loggedInId || userRole !== 'student') return;
     
     const newRecord: AttendanceRecord = {
       id: Date.now().toString(),
       studentId: loggedInId,
       timestamp: new Date().toLocaleString(),
+      photoData,
     };
     const updatedRecords = [...attendanceRecords, newRecord];
     setAttendanceRecords(updatedRecords);
@@ -374,6 +385,13 @@ export default function App() {
   const takePhotoAndMarkAttendance = async () => {
     if (!videoRef.current) return;
     
+    // Capture photo
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
+    const photoData = canvas.toDataURL('image/jpeg');
+
     // Simulate photo taking and mark attendance
     setMessage('Detecting face...');
     
@@ -382,7 +400,7 @@ export default function App() {
     if (faceDetected) {
         setMessage('Face detected! Marking attendance...');
         setTimeout(() => {
-            markAttendance();
+            markAttendance(photoData);
         }, 1000);
     } else {
         setMessage('Face not recognized! Please try again.');
@@ -825,6 +843,7 @@ export default function App() {
                       <table className="w-full">
                           <thead className="border-b border-slate-100">
                                <tr className="text-left text-xs uppercase tracking-widest text-[#0F172A]/50">
+                                  <th className="pb-4">Photo</th>
                                   <th className="pb-4">Student ID</th>
                                   <th className="pb-4">Timestamp</th>
                                   <th className="pb-4">Actions</th>
