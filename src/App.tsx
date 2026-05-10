@@ -750,7 +750,6 @@ export default function App() {
                     </div>
                 </div>
 
-                <Footer />
               </main>
               
               {/* Calendar Manager */}
@@ -878,6 +877,7 @@ export default function App() {
                       </table>
                   </div>
               </div>
+              <Footer />
           </div>
         </>
       );
