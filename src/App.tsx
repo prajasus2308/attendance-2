@@ -122,9 +122,9 @@ const TeamSection = () => {
         { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778249315889-c3c54a84-1ecc-4385-858e-c95a3a8cde2f.jpeg' },
         { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
         { name: 'Anish', role: 'UI/UX Designer', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778261769527-c561fcd2-1343-4c2e-8b80-5dc9ef50fd48.jpeg' },
-        { name: 'Kushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
+        { name: 'Kushagra', role: 'Graphic Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
         { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778251044294-1fbb0df2-b124-42e4-af9c-2c128484a307.jpeg' },
-        { name: 'Hridyansh', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778594779802-8594ec8e-1fb4-4c52-84bf-1c1329f42d4a.jpeg' },
+        { name: 'Hridyansh', role: 'Design Advisor', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778594779802-8594ec8e-1fb4-4c52-84bf-1c1329f42d4a.jpeg' },
     ];
     return (
         <section id="team" className="container mx-auto px-6 py-20">
