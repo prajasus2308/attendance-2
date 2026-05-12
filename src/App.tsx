@@ -181,7 +181,10 @@ export default function App() {
   const [attendanceThreshold, setAttendanceThreshold] = useState<number>(2);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState<Student | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+      const saved = localStorage.getItem('isDarkMode');
+      return saved ? JSON.parse(saved) : false;
+  });
   const [studentSort, setStudentSort] = useState('none');
   const [calendarSearchQuery, setCalendarSearchQuery] = useState('');
 
@@ -191,6 +194,7 @@ export default function App() {
     } else {
         document.documentElement.classList.remove('dark');
     }
+    localStorage.setItem('isDarkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
   
   const DarkModeButton = () => (
