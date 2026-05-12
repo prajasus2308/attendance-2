@@ -113,7 +113,7 @@ const GuideModal = ({ onClose }: { onClose: () => void }) => {
 const Footer = () => (
   <footer className="py-12 border-t border-slate-200 text-center text-slate-600 mt-10 bg-slate-50">
     <p>&copy; 2026 Attendance Solutions.</p>
-    <p className="mt-4 text-emerald-700 font-serif font-bold">Created by Pratyush Raj, Vedang, Anish, Khushagra, Sriyans, Hridyansh</p>
+    <p className="mt-4 text-emerald-700 font-serif font-bold">Created by Pratyush Raj, Vedang, Anish, Kushagra, Sriyans, Hridyansh</p>
   </footer>
 );
 
@@ -122,9 +122,9 @@ const TeamSection = () => {
         { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778249315889-c3c54a84-1ecc-4385-858e-c95a3a8cde2f.jpeg' },
         { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
         { name: 'Anish', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778261769527-c561fcd2-1343-4c2e-8b80-5dc9ef50fd48.jpeg' },
-        { name: 'Khushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
+        { name: 'Kushagra', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
         { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778251044294-1fbb0df2-b124-42e4-af9c-2c128484a307.jpeg' },
-        { name: 'Hridyansh', role: 'Collaborator', icon: '🤝', imageUrl: 'https://via.placeholder.com/150' },
+        { name: 'Hridyansh', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778594779802-8594ec8e-1fb4-4c52-84bf-1c1329f42d4a.jpeg' },
     ];
     return (
         <section id="team" className="container mx-auto px-6 py-20">
@@ -883,20 +883,31 @@ export default function App() {
               </div>
               
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                  <div className="flex justify-between items-center mb-8">
+                  <div className="flex justify-between items-center mb-4">
                       <h2 className="text-2xl font-serif font-bold text-[#0F172A] flex items-center gap-3">
                           <FileText className="size-6 text-[#2563EB]" /> Attendance Records
                       </h2>
-                      <div className="flex items-center gap-4">
-                        <input type="text" placeholder="Search by Student ID" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
-                        <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
-                          <option value="all">All Classes</option>
-                          {[...new Set(students.map(s => s.className))].filter(c => c !== 'N/A').map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <button onClick={exportAttendanceToCSV} className="text-sm font-bold text-[#2563EB] glow-button px-4 py-2 rounded-lg border border-[#2563EB]/20 flex items-center gap-2 uppercase tracking-wide">
-                            <Download className="size-4" /> Export CSV
-                        </button>
-                      </div>
+                      <button onClick={exportAttendanceToCSV} className="text-sm font-bold text-[#2563EB] glow-button px-4 py-2 rounded-lg border border-[#2563EB]/20 flex items-center gap-2 uppercase tracking-wide">
+                          <Download className="size-4" /> Export CSV
+                      </button>
+                  </div>
+                  <div className="flex flex-wrap gap-4 mb-8 p-4 bg-slate-50 rounded-lg">
+                      <div className="relative flex-grow">
+                          <Search className="absolute left-3 top-3 size-4 text-slate-400" />
+                          <input type="text" placeholder="Search by Student ID" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 font-bold text-sm" />
+                       </div>
+                       <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="border border-slate-200 rounded-lg p-2 font-bold text-sm">
+                           <option value="all">All Classes</option>
+                           {[...new Set(students.map(s => s.className))].filter(c => c !== 'N/A').map(c => <option key={c} value={c}>{c}</option>)}
+                       </select>
+                       <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="border border-slate-200 rounded-lg p-2 font-bold text-sm" title="Start Date" />
+                       <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="border border-slate-200 rounded-lg p-2 font-bold text-sm" title="End Date" />
+                       <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="border border-slate-200 rounded-lg p-2 font-bold text-sm">
+                           <option value="newest">Newest First</option>
+                           <option value="oldest">Oldest First</option>
+                           <option value="class-asc">Class (A-Z)</option>
+                           <option value="class-desc">Class (Z-A)</option>
+                       </select>
                   </div>
                   <div className="overflow-x-auto">
                       <table className="w-full">
