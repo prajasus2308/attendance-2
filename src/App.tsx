@@ -148,10 +148,13 @@ export default function App() {
     loadModels().catch(err => console.error('Failed to load models:', err));
   }, []);
   
+  const [loginRole, setLoginRole] = useState<'student' | 'teacher' | 'admin'>('student');
   const [studentId, setStudentId] = useState('');
   const [studentClass, setStudentClass] = useState('');
   const [studentSection, setStudentSection] = useState('');
-  const [userRole, setUserRole] = useState<'student' | 'admin' | null>(null);
+  const [teacherPassword, setTeacherPassword] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [userRole, setUserRole] = useState<'student' | 'teacher' | 'admin' | null>(null);
   const [loggedInId, setLoggedInId] = useState<string | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -277,6 +280,16 @@ export default function App() {
     if (savedThreshold) setAttendanceThreshold(JSON.parse(savedThreshold));
   }, []);
 
+  const handleTeacherLogin = (e: FormEvent) => {
+    e.preventDefault();
+    if (teacherPassword === 'teacher123') {
+      setUserRole('teacher');
+      setLoggedInId('Teacher');
+    } else {
+      addNotification("Invalid teacher password.");
+    }
+  };
+
   const handleStudentLogin = (e: FormEvent) => {
     e.preventDefault();
     if (studentId.trim() && studentClass.trim() && studentSection.trim()) {
@@ -294,7 +307,7 @@ export default function App() {
 
   const handleAdminLogin = (e: FormEvent) => {
     e.preventDefault();
-    if (studentId === 'admin' && newStudentId === 'admin123') {
+    if (studentId === 'admin' && adminPassword === 'admindav') {
       setUserRole('admin');
       setLoggedInId('admin');
     } else {
@@ -606,31 +619,29 @@ export default function App() {
                 </p>
                 
                 <div id="login" className="bg-white p-10 rounded-2xl shadow-xl border border-slate-100 max-w-sm w-full mx-auto">
-                    <h3 className="text-2xl font-bold mb-8 text-center text-[#0F172A]">{studentId === 'admin' ? 'Admin Login' : 'Login'}</h3>
-                    <form onSubmit={studentId === 'admin' ? handleAdminLogin : handleStudentLogin} className="space-y-6">
-                        <input
-                        type="text"
-                        placeholder={studentId === 'admin' ? "Admin Username" : "Enter Student ID"}
-                        value={studentId}
-                        onChange={(e) => setStudentId(e.target.value)}
-                        className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold"
-                        required
-                        />
-                        {studentId !== 'admin' && (
-                          <>
-                            <input type="text" placeholder="Class" value={studentClass} onChange={e => setStudentClass(e.target.value)} className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold" required />
-                            <input type="text" placeholder="Section" value={studentSection} onChange={e => setStudentSection(e.target.value)} className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold" required />
-                          </>
+                    <h3 className="text-2xl font-bold mb-8 text-center text-[#0F172A]">Login</h3>
+                    <div className="flex gap-2 mb-6">
+                        {['student', 'teacher', 'admin'].map(r => (
+                          <button key={r} onClick={() => setLoginRole(r as any)} className={`flex-grow py-2 rounded-lg font-bold capitalize ${loginRole === r ? 'bg-[#2563EB] text-white' : 'bg-slate-200 text-slate-600'}`}>{r}</button>
+                        ))}
+                    </div>
+                    
+                    <form onSubmit={loginRole === 'admin' ? handleAdminLogin : loginRole === 'teacher' ? handleTeacherLogin : handleStudentLogin} className="space-y-6">
+                        {loginRole === 'student' && (
+                            <>
+                                <input type="text" placeholder="Enter Student ID" value={studentId} onChange={(e) => setStudentId(e.target.value)} className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold" required />
+                                <input type="text" placeholder="Class" value={studentClass} onChange={e => setStudentClass(e.target.value)} className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold" required />
+                                <input type="text" placeholder="Section" value={studentSection} onChange={e => setStudentSection(e.target.value)} className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold" required />
+                            </>
                         )}
-                        {studentId === 'admin' && (
-                        <input
-                            type="password"
-                            placeholder="Password"
-                            value={newStudentId}
-                            onChange={(e) => setNewStudentId(e.target.value)}
-                            className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold"
-                            required
-                        />
+                        {loginRole === 'teacher' && (
+                            <input type="password" placeholder="Shared Password" value={teacherPassword} onChange={(e) => setTeacherPassword(e.target.value)} className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold" required />
+                        )}
+                        {loginRole === 'admin' && (
+                          <>
+                            <input type="text" placeholder="Admin Username" value={studentId} onChange={(e) => setStudentId(e.target.value)} className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold" required />
+                            <input type="password" placeholder="Password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full px-5 py-4 rounded-lg bg-[#F8FAFC] border border-slate-200 text-[#0F172A] placeholder-slate-400 focus:ring-2 focus:ring-[#2563EB] font-bold" required />
+                          </>
                         )}
                         <button type="submit" className="w-full bg-[#2563EB] text-white font-bold py-4 rounded-lg hover:bg-[#1d4ed8] transition-all shadow-lg shadow-[#2563EB]/20 uppercase tracking-wider text-sm glow-button">
                         Login
@@ -674,6 +685,55 @@ export default function App() {
       </div>
       </>
     );
+  }
+
+  if (userRole === 'teacher') {
+      return (
+        <>
+          <NotificationToast notifications={notifications} />
+          <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900 p-4 md:p-8 font-sans">
+              <header className="max-w-5xl mx-auto flex justify-between items-center mb-10 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                  <h1 className="text-3xl font-serif font-bold text-[#0F172A] flex items-center gap-3"><GraduationCap className="size-8 text-[#2563EB]" /> Teacher Dashboard</h1>
+                  <div className="flex items-center gap-4">
+                      <button onClick={handleLogout} className="text-[#0F172A]/60 dark:text-white/60 hover:text-red-600 flex items-center gap-2 font-bold transition-colors glow-button">
+                          <LogOut className="size-5" /> Logout
+                      </button>
+                      <DarkModeButton />
+                  </div>
+              </header>
+              <main className="max-w-5xl mx-auto space-y-10">
+                  <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                      <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
+                          <FileText className="size-6 text-[#2563EB]" /> Class Attendance Records
+                      </h2>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="text-left text-xs uppercase tracking-widest text-[#0F172A]/50 border-b border-slate-100">
+                                    <th className="pb-4">Student ID</th>
+                                    <th className="pb-4">Timestamp</th>
+                                    <th className="pb-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {attendanceRecords.map(r => (
+                                    <tr key={r.id} className="border-b border-slate-100">
+                                        <td className="py-4 font-bold text-[#0F172A]">{r.studentId}</td>
+                                        <td className="py-4 text-[#0F172A]/70">{r.timestamp}</td>
+                                        <td className="py-4">
+                                            <button onClick={() => addManualAttendance(r.studentId)} className="bg-[#2563EB] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#1d4ed8] glow-button">Mark Present</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                      </div>
+                  </div>
+              </main>
+              <Footer />
+          </div>
+        </>
+      );
   }
 
   if (userRole === 'admin') {
