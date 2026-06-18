@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3 } from 'lucide-react';
 import Papa from 'papaparse';
 
@@ -31,6 +31,14 @@ const QuoteDisplay = () => {
     );
 };
 
+interface FileItem {
+    id: string;
+    name: string;
+    type: 'folder' | 'file';
+    contentUrl?: string; // For files
+    children?: FileItem[]; // For folders
+}
+
 interface Student {
     id: string;
     className: string;
@@ -40,6 +48,7 @@ interface Student {
     phone?: string;
     photoUrl?: string;
     academicDetails?: string;
+    documents?: FileItem[];
 }
 
 interface AttendanceRecord {
@@ -117,6 +126,71 @@ const Footer = () => (
   </footer>
 );
 
+const StudentProfileModal = ({ student, onClose, onUpdateStudent }: { student: Student, onClose: () => void, onUpdateStudent: (s: Student) => void }) => {
+    const [documents, setDocuments] = useState<FileItem[]>(student.documents || []);
+
+    const addFolder = (parent: FileItem | null) => {
+        const name = prompt('Folder name:');
+        if (!name) return;
+        const newFolder: FileItem = { id: Date.now().toString(), name, type: 'folder', children: [] };
+        if (parent) {
+            parent.children = [...(parent.children || []), newFolder];
+            setDocuments([...documents]);
+        } else {
+            setDocuments([...documents, newFolder]);
+        }
+    };
+
+    const handleFileUpload = (e: ChangeEvent<HTMLInputElement>, parent: FileItem | null) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const url = e.target?.result as string;
+        const newFile: FileItem = { id: Date.now().toString(), name: file.name, type: 'file', contentUrl: url };
+        if (parent) {
+            parent.children = [...(parent.children || []), newFile];
+            setDocuments([...documents]);
+        } else {
+            setDocuments([...documents, newFile]);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+
+    const saveChanges = () => {
+        onUpdateStudent({ ...student, documents });
+        onClose();
+        alert('Saved!');
+    };
+
+    return (
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-serif font-bold text-[#0F172A]">{student.name}'s Documents (Admin)</h2>
+                    <button onClick={onClose}><X className="size-6 text-slate-400" /></button>
+                </div>
+                <button onClick={() => addFolder(null)} className="mb-4 bg-blue-500 text-white p-2 rounded">Add Root Folder</button>
+                <div className="space-y-4">
+                    {documents.map(doc => (
+                        <div key={doc.id} className="border p-2 rounded">
+                            {doc.name} ({doc.type})
+                            {doc.type === 'folder' && (
+                                <div className='pl-4'>
+                                    <button onClick={() => addFolder(doc)} className="text-sm bg-gray-200 p-1 rounded">Add Subfolder</button>
+                                    <input type="file" onChange={(e) => handleFileUpload(e, doc)} className="text-sm" />
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+                <button onClick={saveChanges} className="mt-6 bg-green-600 text-white p-3 rounded-lg w-full font-bold">Save</button>
+            </div>
+        </div>
+    );
+};
+
 const TeamSection = () => {
     const team = [
         { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778249315889-c3c54a84-1ecc-4385-858e-c95a3a8cde2f.jpeg' },
@@ -179,14 +253,26 @@ export default function App() {
   const [sortOrder, setSortOrder] = useState('newest');
   const [manualStudentId, setManualStudentId] = useState('');
   const [attendanceThreshold, setAttendanceThreshold] = useState<number>(2);
+  const [isAttendanceLocked, setIsAttendanceLocked] = useState(() => {
+      const saved = localStorage.getItem('isAttendanceLocked');
+      return saved ? JSON.parse(saved) : false;
+  });
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState<Student | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
       const saved = localStorage.getItem('isDarkMode');
       return saved ? JSON.parse(saved) : false;
   });
+  const updateStudent = (updatedStudent: Student) => {
+    const updated = students.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+    setStudents(updated);
+    localStorage.setItem('students_list', JSON.stringify(updated));
+  }
+
   const [studentSort, setStudentSort] = useState('none');
   const [calendarSearchQuery, setCalendarSearchQuery] = useState('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -358,9 +444,27 @@ export default function App() {
     };
   }, [showFaceScanner]);
 
+  const hasMarkedToday = (studentId: string) => {
+    const todayStr = new Date().toDateString();
+    return attendanceRecords.some(r => {
+      const recordDate = new Date(r.timestamp);
+      return r.studentId === studentId && recordDate.toDateString() === todayStr;
+    });
+  };
+
   const markAttendance = (photoData?: string) => {
     if (!loggedInId || userRole !== 'student') return;
     
+    if (isAttendanceLocked) {
+        addNotification('Attendance is locked by admin!');
+        return;
+    }
+    
+    if (hasMarkedToday(loggedInId)) {
+        addNotification('Attendance already marked for today!');
+        return;
+    }
+
     const newRecord: AttendanceRecord = {
       id: Date.now().toString(),
       studentId: loggedInId,
@@ -376,8 +480,16 @@ export default function App() {
   };
 
   const addManualAttendance = (studentId: string) => {
+    if (isAttendanceLocked) {
+        addNotification('Attendance is locked by admin!');
+        return;
+    }
     if (!students.find(s => s.id === studentId)) {
         addNotification("Student not found!");
+        return;
+    }
+    if (hasMarkedToday(studentId)) {
+        addNotification("Student attendance already marked for today!");
         return;
     }
     const newRecord: AttendanceRecord = {
@@ -398,10 +510,40 @@ export default function App() {
       return acc;
   }, {} as Record<string, number>)).map(([month, count]) => ({ month, count }));
 
+  const todayStr = new Date().toDateString();
+  const presentStudentIds = new Set(attendanceRecords
+    .filter(r => new Date(r.timestamp).toDateString() === todayStr)
+    .map(r => r.studentId));
+  const presentCount = presentStudentIds.size;
+  const absentCount = Math.max(0, students.length - presentCount);
+  const todayAttendanceData = [
+      { name: 'Present', value: presentCount },
+      { name: 'Absent', value: absentCount },
+  ];
+
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const studentAttendanceSummary = students.map(s => {
+      const count = attendanceRecords.filter(r => {
+          const d = new Date(r.timestamp);
+          return r.studentId === s.id && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      }).length;
+      return { id: s.id, name: s.name || 'Unknown', count };
+  });
+
+  const sortedAttendance = [...studentAttendanceSummary].sort((a, b) => b.count - a.count);
+  const topStudents = sortedAttendance.slice(0, 5);
+  const bottomStudents = [...sortedAttendance].reverse().slice(0, 5);
+
 
   const takePhotoAndMarkAttendance = async () => {
     if (!videoRef.current) return;
     
+    // Liveness prompt
+    setMessage('Prepare for liveness check: Blink now!');
+    await new Promise(resolve => setTimeout(resolve, 2000));                
+    setMessage('Checking for liveness...');
+
     // Capture photo
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
@@ -444,6 +586,15 @@ export default function App() {
     const updated = students.filter(s => s.id !== id);
     setStudents(updated);
     localStorage.setItem('students_list', JSON.stringify(updated));
+  }
+
+  const bulkDeleteStudents = () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedStudentIds.length} students?`)) return;
+    const updated = students.filter(s => !selectedStudentIds.includes(s.id));
+    setStudents(updated);
+    localStorage.setItem('students_list', JSON.stringify(updated));
+    setSelectedStudentIds([]);
+    addNotification('Students deleted!');
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -715,20 +866,32 @@ export default function App() {
                             <thead>
                                 <tr className="text-left text-xs uppercase tracking-widest text-[#0F172A]/50 border-b border-slate-100">
                                     <th className="pb-4">Student ID</th>
-                                    <th className="pb-4">Timestamp</th>
+                                    <th className="pb-4">Class</th>
                                     <th className="pb-4">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {attendanceRecords.map(r => (
-                                    <tr key={r.id} className="border-b border-slate-100">
-                                        <td className="py-4 font-bold text-[#0F172A]">{r.studentId}</td>
-                                        <td className="py-4 text-[#0F172A]/70">{r.timestamp}</td>
-                                        <td className="py-4">
-                                            <button onClick={() => addManualAttendance(r.studentId)} className="bg-[#2563EB] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#1d4ed8] glow-button">Mark Present</button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {students.map(s => {
+                                    const marked = hasMarkedToday(s.id);
+                                    return (
+                                        <tr key={s.id} className={`border-b ${marked ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                                            <td className="py-4 font-bold text-[#0F172A]">{s.id}</td>
+                                            <td className="py-4 text-[#0F172A]/70">{s.className}</td>
+                                            <td className="py-4 flex items-center gap-4">
+                                                {marked ? 
+                                                    <span className='flex items-center gap-1 font-bold text-emerald-600'><CheckCircle className="text-emerald-500 size-5" /> Present</span> : 
+                                                    <span className='flex items-center gap-1 font-bold text-red-600'><X className="text-red-500 size-5" /> Absent</span>
+                                                }
+                                                <button 
+                                                    onClick={() => addManualAttendance(s.id)} 
+                                                    disabled={marked || isAttendanceLocked}
+                                                    className={`px-4 py-2 rounded-lg font-bold glow-button ${(marked || isAttendanceLocked) ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#2563EB] text-white hover:bg-[#1d4ed8]'}`}>
+                                                    {marked ? 'Already Marked' : isAttendanceLocked ? 'Locked' : 'Mark Present'}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                       </div>
@@ -782,9 +945,15 @@ export default function App() {
                         <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                             <Settings className="size-6 text-[#2563EB]" /> Settings
                         </h2>
-                        <div className="flex items-center gap-4">
+                         <div className="flex items-center gap-4">
                             <label className="font-bold text-[#0F172A]">Attendance Threshold:</label>
                             <input type="number" value={attendanceThreshold} onChange={(e) => { const val = parseInt(e.target.value); setAttendanceThreshold(val); localStorage.setItem('attendance_threshold', JSON.stringify(val)); }} className="px-4 py-3 rounded-lg border border-slate-200 font-bold w-24" />
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <label className="font-bold text-[#0F172A]">Attendance Lock:</label>
+                             <button onClick={() => {setIsAttendanceLocked(!isAttendanceLocked); localStorage.setItem('isAttendanceLocked', JSON.stringify(!isAttendanceLocked)); addNotification(`Attendance ${!isAttendanceLocked ? 'Locked' : 'Unlocked'}!`)}} className={`px-4 py-2 rounded-lg font-bold ${isAttendanceLocked ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}>
+                                {isAttendanceLocked ? 'Locked' : 'Unlocked'}
+                             </button>
                         </div>
                         <h2 className="text-2xl font-serif font-bold text-[#0F172A] mt-6 mb-6 flex items-center gap-3">
                             <Edit2 className="size-6 text-[#2563EB]" /> Manual Override
@@ -796,21 +965,67 @@ export default function App() {
                     </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                <div className="grid md:grid-cols-2 gap-8">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                      <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
+                          <BarChart3 className="size-6 text-[#2563EB]" /> Attendance Trends
+                      </h2>
+                      <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={monthlyData}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="month" />
+                                  <YAxis />
+                                  <Tooltip />
+                                  <Legend />
+                                  <Bar dataKey="count" fill="#2563EB" />
+                              </BarChart>
+                          </ResponsiveContainer>
+                      </div>
+                    </div>
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                      <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
+                          <BarChart3 className="size-6 text-[#2563EB]" /> Today's Attendance
+                      </h2>
+                      <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                  <Pie data={todayAttendanceData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label>
+                                      {todayAttendanceData.map((entry, index) => (
+                                          <Cell key={`cell-${index}`} fill={index === 0 ? '#16A34A' : '#DC2626'} />
+                                      ))}
+                                  </Pie>
+                                  <Tooltip />
+                                  <Legend />
+                              </PieChart>
+                          </ResponsiveContainer>
+                      </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 col-span-full mt-8">
                     <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
-                        <BarChart3 className="size-6 text-[#2563EB]" /> Attendance Trends
+                        <FileText className="size-6 text-[#2563EB]" /> Attendance Summary (Current Month)
                     </h2>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={monthlyData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="count" fill="#2563EB" />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div className="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 className="font-bold text-emerald-600 mb-4">Top 5 Students</h3>
+                            {topStudents.map(s => (
+                                <div key={s.id} className="flex justify-between py-2 border-b">
+                                    <span>{s.name}</span>
+                                    <span className="font-bold">{s.count} days</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-red-600 mb-4">Bottom 5 Students</h3>
+                            {bottomStudents.map(s => (
+                                <div key={s.id} className="flex justify-between py-2 border-b">
+                                    <span>{s.name}</span>
+                                    <span className="font-bold">{s.count} days</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
@@ -849,6 +1064,9 @@ export default function App() {
                           <User className="size-6 text-[#2563EB]" /> Student Profiles
                       </span>
                       <div className='flex gap-2'>
+                        {selectedStudentIds.length > 0 && (
+                            <button onClick={bulkDeleteStudents} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2 glow-button text-sm"><Trash2 size={16}/> Delete ({selectedStudentIds.length})</button>
+                        )}
                         <select value={studentSort} onChange={e => setStudentSort(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
                             <option value="none">Sort by</option>
                             <option value="name-asc">Name (A-Z)</option>
@@ -862,11 +1080,16 @@ export default function App() {
                       {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).sort((a,b) => {
                           if (studentSort === 'name-asc') return (a.name || '').localeCompare(b.name || '');
                           if (studentSort === 'name-desc') return (b.name || '').localeCompare(a.name || '');
+                          return 0;
                        }).map(s => {
                           const attendanceCount = attendanceRecords.filter(r => r.studentId === s.id).length;
                           const isLow = attendanceCount < attendanceThreshold;
                           return (
-                          <div key={s.id} className={`p-4 rounded-lg border ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
+                          <div key={s.id} onClick={() => userRole === 'admin' && setSelectedStudentForProfile(s)} className={`cursor-pointer p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
+                              <input type="checkbox" className="absolute top-2 left-2 size-5" checked={selectedStudentIds.includes(s.id)} onChange={e => {
+                                  if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
+                                  else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
+                              }} />
                               {s.photoUrl ? (
                                   <img src={s.photoUrl} alt={s.name} className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" />
                               ) : (
@@ -884,6 +1107,7 @@ export default function App() {
                           </div>
                       )})}
                   </div>
+               </div>
               </div>
               
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
@@ -951,7 +1175,6 @@ export default function App() {
                           </tbody>
                       </table>
                   </div>
-              </div>
               <Footer />
           </div>
         </>
@@ -977,6 +1200,13 @@ export default function App() {
         </div>
       </header>
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+      {selectedStudentForProfile && (
+        <StudentProfileModal 
+          student={selectedStudentForProfile} 
+          onClose={() => setSelectedStudentForProfile(null)} 
+          onUpdateStudent={updateStudent}
+        />
+      )}
 
       <main className="max-w-5xl mx-auto space-y-10">
         <QuoteDisplay />
@@ -985,8 +1215,8 @@ export default function App() {
             <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6">Camera Attendance</h2>
             <video ref={videoRef} autoPlay playsInline className="mx-auto rounded-xl bg-[#0F172A] mb-6" width="320" height="240"></video>
             <p className="mb-4 text-[#0F172A]/70 font-bold">{message}</p>
-            <button onClick={takePhotoAndMarkAttendance} className="bg-[#16A34A] text-white px-8 py-3 rounded-lg font-bold w-full md:w-auto uppercase tracking-wide glow-button">
-                Take Photo & Mark Attendance
+            <button onClick={takePhotoAndMarkAttendance} disabled={hasMarkedToday(loggedInId!) || isAttendanceLocked} className={`px-8 py-3 rounded-lg font-bold w-full md:w-auto uppercase tracking-wide glow-button ${(hasMarkedToday(loggedInId!) || isAttendanceLocked) ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#16A34A] text-white hover:bg-[#15803d]'}`}>
+                {hasMarkedToday(loggedInId!) ? 'Attendance Marked Today' : isAttendanceLocked ? 'Attendance Locked' : 'Take Photo & Mark Attendance'}
             </button>
              <button onClick={() => {setShowFaceScanner(false); setMessage('')}} className="ml-4 text-slate-500 font-bold glow-button">Close</button>
           </div>
