@@ -12,3 +12,12 @@
   }
 }
 
+@media print {
+  body > *:not(.printable-id-card) {
+    display: none !important;
+  }
+  .printable-id-card {
+    display: block !important;
+  }
+}
+

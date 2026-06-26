@@ -5,9 +5,14 @@
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3 } from 'lucide-react';
+import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3, Github } from 'lucide-react';
 import Papa from 'papaparse';
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import html2canvas from "html2canvas";
 
+import { ConfirmationModal } from './components/ConfirmationModal';
+import { GitHubModal } from './components/GitHubModal';
 import { QUOTES } from './constants';
 import { motion } from 'motion/react';
 import { detectFace, loadModels } from './services/faceRecognitionService';
@@ -63,6 +68,14 @@ interface CalendarEvent {
     date: string;
     title: string;
     type: 'holiday' | 'exam' | 'event';
+}
+
+interface DeletionRecord {
+    id: string;
+    targetId: string;
+    details: string;
+    timestamp: string;
+    type: 'student' | 'attendance';
 }
 
 const NotificationToast = ({ notifications }: { notifications: { id: string, message: string }[] }) => {
@@ -126,6 +139,48 @@ const Footer = () => (
   </footer>
 );
 
+
+const ReportSection = ({ students, attendanceRecords }: { students: Student[], attendanceRecords: AttendanceRecord[] }) => {
+    const classes = Array.from(new Set(students.map(s => s.className)));
+    const [selectedClass, setSelectedClass] = useState(classes[0] || '');
+
+    const generatePDF = async () => {
+        const doc = new jsPDF();
+        doc.text(`Monthly Attendance Report - Class ${selectedClass}`, 10, 10);
+
+        // Summary Table
+        const classStudents = students.filter(s => s.className === selectedClass);
+        const data = classStudents.map(s => {
+            const count = attendanceRecords.filter(r => r.studentId === s.id).length;
+            return [s.id, s.name || 'Unknown', count];
+        });
+        
+        autoTable(doc, { head: [['ID', 'Name', 'Present Days']], body: data });
+
+        // Chart
+        const chartDiv = document.getElementById('report-chart');
+        if (chartDiv) {
+            const canvas = await html2canvas(chartDiv);
+            const imgData = canvas.toDataURL('image/png');
+            doc.addImage(imgData, 'PNG', 10, (doc as any).lastAutoTable.finalY + 10, 180, 100);
+        }
+
+        doc.save(`AttendanceReport_${selectedClass}.pdf`);
+    };
+
+    return (
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mt-8">
+            <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
+                Generate Reports
+            </h2>
+            <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="p-3 rounded-lg border border-slate-200 font-bold mb-4 w-full">
+                {classes.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button onClick={generatePDF} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] w-full">Export PDF</button>
+        </div>
+    );
+};
+
 const StudentProfileModal = ({ student, onClose, onUpdateStudent }: { student: Student, onClose: () => void, onUpdateStudent: (s: Student) => void }) => {
     const [documents, setDocuments] = useState<FileItem[]>(student.documents || []);
 
@@ -186,6 +241,15 @@ const StudentProfileModal = ({ student, onClose, onUpdateStudent }: { student: S
                     ))}
                 </div>
                 <button onClick={saveChanges} className="mt-6 bg-green-600 text-white p-3 rounded-lg w-full font-bold">Save</button>
+                <button onClick={() => window.print()} className="mt-2 bg-purple-600 text-white p-3 rounded-lg w-full font-bold">Print ID Card</button>
+            </div>
+            <div className="printable-id-card hidden w-full p-8">
+                <div className="w-64 border-4 border-black p-4 bg-white rounded-lg mx-auto">
+                    <h3 className="text-xl font-bold mb-2">ID Card</h3>
+                    {student.photoUrl && <img src={student.photoUrl} alt="Photo" className="w-24 h-24 rounded-full mx-auto" />}
+                    <p className="text-center mt-2 font-bold">{student.name}</p>
+                    <p className="text-center font-mono">ID: {student.id}</p>
+                </div>
             </div>
         </div>
     );
@@ -253,10 +317,25 @@ export default function App() {
   const [sortOrder, setSortOrder] = useState('newest');
   const [manualStudentId, setManualStudentId] = useState('');
   const [attendanceThreshold, setAttendanceThreshold] = useState<number>(2);
+  const [deletionHistory, setDeletionHistory] = useState<DeletionRecord[]>([]);
   const [isAttendanceLocked, setIsAttendanceLocked] = useState(() => {
       const saved = localStorage.getItem('isAttendanceLocked');
       return saved ? JSON.parse(saved) : false;
   });
+  const [attendanceLockedDate, setAttendanceLockedDate] = useState(() => {
+    return localStorage.getItem('attendanceLockedDate') || null;
+  });
+
+  useEffect(() => {
+    const today = new Date().toDateString();
+    if (isAttendanceLocked && attendanceLockedDate && attendanceLockedDate !== today) {
+        setIsAttendanceLocked(false);
+        setAttendanceLockedDate(null);
+        localStorage.setItem('isAttendanceLocked', JSON.stringify(false));
+        localStorage.removeItem('attendanceLockedDate');
+        addNotification('Attendance unlocked for the new day!');
+    }
+  }, [attendanceLockedDate, isAttendanceLocked]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState<Student | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -272,6 +351,8 @@ export default function App() {
   const [studentSort, setStudentSort] = useState('none');
   const [calendarSearchQuery, setCalendarSearchQuery] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [confirmationModal, setConfirmationModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
 
   useEffect(() => {
@@ -292,6 +373,7 @@ export default function App() {
     </button>
   );
 
+  const [isGitHubVisible, setIsGitHubVisible] = useState(true);
   const [displayedName, setDisplayedName] = useState("");
   const studentName = students.find(s => s.id === loggedInId)?.name || 'Not set';
 
@@ -368,6 +450,8 @@ export default function App() {
     if (savedEvents) setCalendarEvents(JSON.parse(savedEvents));
     const savedThreshold = localStorage.getItem('attendance_threshold');
     if (savedThreshold) setAttendanceThreshold(JSON.parse(savedThreshold));
+    const savedDeletionHistory = localStorage.getItem('deletion_history');
+    if (savedDeletionHistory) setDeletionHistory(JSON.parse(savedDeletionHistory));
   }, []);
 
   const handleTeacherLogin = (e: FormEvent) => {
@@ -536,37 +620,67 @@ export default function App() {
   const bottomStudents = [...sortedAttendance].reverse().slice(0, 5);
 
 
+  useEffect(() => {
+    if (!showFaceScanner) return;
+    
+    let animationFrameId: number;
+    let prevFacePosition = { x: 0, y: 0 };
+    let stillCounter = 0;
+    
+    const detectLoop = async () => {
+        if (!videoRef.current || videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+            animationFrameId = requestAnimationFrame(detectLoop);
+            return;
+        }
+        const predictions = await detectFace(videoRef.current);
+        
+        if (predictions && predictions.length > 0) {
+            const face = predictions[0];
+            const topLeft = face.topLeft as [number, number];
+            const bottomRight = face.bottomRight as [number, number];
+            const centerX = (topLeft[0] + bottomRight[0]) / 2;
+            const centerY = (topLeft[1] + bottomRight[1]) / 2;
+            
+            const videoWidth = videoRef.current.videoWidth;
+            const videoHeight = videoRef.current.videoHeight;
+            
+            const isCentered = Math.abs(centerX - videoWidth / 2) < videoWidth * 0.15 && 
+                              Math.abs(centerY - videoHeight / 2) < videoHeight * 0.15;
+            const movement = Math.sqrt(Math.pow(centerX - prevFacePosition.x, 2) + Math.pow(centerY - prevFacePosition.y, 2));
+                           
+            if (isCentered) {
+                if (movement > 5) { 
+                    stillCounter++;
+                }
+                if (stillCounter > 30) { // Movement detected for ~30 frames
+                    setMessage('Attendance marked automatically!');
+                    setTimeout(() => {
+                        markAttendance();
+                    }, 500);
+                    return; // Stop loop
+                }
+                setMessage(`Please move your head slightly... (${Math.round(stillCounter/30*100)}%)`);
+            } else {
+                stillCounter = 0;
+                setMessage('Please center your face');
+            }
+            
+            prevFacePosition = { x: centerX, y: centerY };
+        } else {
+            stillCounter = 0;
+            setMessage('Face not detected');
+        }
+        
+        animationFrameId = requestAnimationFrame(detectLoop);
+    };
+    
+    detectLoop();
+    
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [showFaceScanner]);
+
   const takePhotoAndMarkAttendance = async () => {
-    if (!videoRef.current) return;
-    
-    // Liveness prompt
-    setMessage('Prepare for liveness check: Blink now!');
-    await new Promise(resolve => setTimeout(resolve, 2000));                
-    setMessage('Checking for liveness...');
-
-    // Capture photo
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
-    const photoData = canvas.toDataURL('image/jpeg');
-
-    // Simulate photo taking and mark attendance
-    setMessage('Detecting face...');
-    
-    const faceDetected = await detectFace(videoRef.current);
-    
-    if (faceDetected) {
-        setMessage('Face detected! Marking attendance...');
-        setTimeout(() => {
-            markAttendance(photoData);
-        }, 1000);
-    } else {
-        setMessage('Face not recognized! Please try again.');
-        setTimeout(() => {
-            setMessage('');
-        }, 2000);
-    }
+    markAttendance();
   };
 
 
@@ -585,16 +699,37 @@ export default function App() {
     if (!window.confirm('Are you sure you want to delete this student?')) return;
     const updated = students.filter(s => s.id !== id);
     setStudents(updated);
+    
+    setDeletionHistory(prev => {
+        const record: DeletionRecord = { id: Date.now().toString(), targetId: id, details: `Student ${id}`, timestamp: new Date().toLocaleString(), type: 'student' };
+        const history = [record, ...prev];
+        localStorage.setItem('deletion_history', JSON.stringify(history));
+        return history;
+    });
     localStorage.setItem('students_list', JSON.stringify(updated));
   }
 
   const bulkDeleteStudents = () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedStudentIds.length} students?`)) return;
-    const updated = students.filter(s => !selectedStudentIds.includes(s.id));
-    setStudents(updated);
-    localStorage.setItem('students_list', JSON.stringify(updated));
-    setSelectedStudentIds([]);
-    addNotification('Students deleted!');
+    setConfirmationModal({
+        isOpen: true,
+        title: 'Confirm Delete',
+        message: `Are you sure you want to delete ${selectedStudentIds.length} students?`,
+        onConfirm: () => {
+            const updated = students.filter(s => !selectedStudentIds.includes(s.id));
+            setStudents(updated);
+            localStorage.setItem('students_list', JSON.stringify(updated));
+            
+            setDeletionHistory(prev => {
+                const records: DeletionRecord[] = selectedStudentIds.map(id => ({ id: Date.now().toString() + id, targetId: id, details: `Bulk deleted student ${id}`, timestamp: new Date().toLocaleString(), type: 'student' }));
+                const history = [...records, ...prev];
+                localStorage.setItem('deletion_history', JSON.stringify(history));
+                return history;
+            });
+            
+            setSelectedStudentIds([]);
+            addNotification('Students deleted!');
+        }
+    });
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -628,6 +763,14 @@ export default function App() {
     if (!window.confirm('Are you sure you want to delete this attendance record?')) return;
     const updated = attendanceRecords.filter(r => r.id !== id);
     setAttendanceRecords(updated);
+    
+    setDeletionHistory(prev => {
+        const record: DeletionRecord = { id: Date.now().toString(), targetId: id, details: `Attendance record ${id}`, timestamp: new Date().toLocaleString(), type: 'attendance' };
+        const history = [record, ...prev];
+        localStorage.setItem('deletion_history', JSON.stringify(history));
+        return history;
+    });
+
     localStorage.setItem('student_attendance', JSON.stringify(updated));
     addNotification('Record deleted!');
   }
@@ -753,6 +896,7 @@ export default function App() {
                 <a href="#features" className="hover:text-[#2563EB]">Features</a>
                 <DarkModeButton />
                 <button onClick={() => setShowGuide(true)} className="text-[#2563EB] font-bold">Help</button>
+                <button onClick={() => setIsGitHubVisible(!isGitHubVisible)} className="text-[#2563EB] font-bold">{isGitHubVisible ? 'Hide GitHub' : 'Show GitHub'}</button>
                 <button onClick={() => setStudentId('admin')} className="text-[#2563EB] font-bold glow-button">Admin Login</button>
             </nav>
           </header>
@@ -951,7 +1095,20 @@ export default function App() {
                         </div>
                         <div className="flex items-center gap-4">
                             <label className="font-bold text-[#0F172A]">Attendance Lock:</label>
-                             <button onClick={() => {setIsAttendanceLocked(!isAttendanceLocked); localStorage.setItem('isAttendanceLocked', JSON.stringify(!isAttendanceLocked)); addNotification(`Attendance ${!isAttendanceLocked ? 'Locked' : 'Unlocked'}!`)}} className={`px-4 py-2 rounded-lg font-bold ${isAttendanceLocked ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}>
+                             <button onClick={() => {
+                                  const newLockedStatus = !isAttendanceLocked;
+                                  setIsAttendanceLocked(newLockedStatus);
+                                  if (newLockedStatus) {
+                                      const today = new Date().toDateString();
+                                      setAttendanceLockedDate(today);
+                                      localStorage.setItem('attendanceLockedDate', today);
+                                  } else {
+                                      setAttendanceLockedDate(null);
+                                      localStorage.removeItem('attendanceLockedDate');
+                                  }
+                                  localStorage.setItem('isAttendanceLocked', JSON.stringify(newLockedStatus));
+                                  addNotification(`Attendance ${newLockedStatus ? 'Locked' : 'Unlocked'}!`)
+                              }} className={`px-4 py-2 rounded-lg font-bold ${isAttendanceLocked ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}>
                                 {isAttendanceLocked ? 'Locked' : 'Unlocked'}
                              </button>
                         </div>
@@ -970,8 +1127,8 @@ export default function App() {
                       <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                           <BarChart3 className="size-6 text-[#2563EB]" /> Attendance Trends
                       </h2>
-                      <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
+                       <div id="report-chart" className="h-[256px] w-[500px]">
+                          <ResponsiveContainer width={500} height={256}>
                               <BarChart data={monthlyData}>
                                   <CartesianGrid strokeDasharray="3 3" />
                                   <XAxis dataKey="month" />
@@ -987,8 +1144,8 @@ export default function App() {
                       <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                           <BarChart3 className="size-6 text-[#2563EB]" /> Today's Attendance
                       </h2>
-                      <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
+                      <div className="h-[256px] w-[500px]">
+                          <ResponsiveContainer width={500} height={256}>
                               <PieChart>
                                   <Pie data={todayAttendanceData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label>
                                       {todayAttendanceData.map((entry, index) => (
@@ -1029,6 +1186,7 @@ export default function App() {
                     </div>
                 </div>
 
+                <ReportSection students={students} attendanceRecords={attendanceRecords} />
               </main>
               
               {/* Calendar Manager */}
@@ -1054,6 +1212,22 @@ export default function App() {
                               <button onClick={() => removeEvent(e.id)} className="text-red-500 hover:text-red-700"><Trash2 className="size-4" /></button>
                           </div>
                       ))}
+                  </div>
+              </div>
+
+              {/* Deletion History */}
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8">
+                  <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
+                      <Trash2 className="size-6 text-[#2563EB]" /> Deletion History
+                  </h2>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {deletionHistory.map(h => (
+                          <div key={h.id} className="flex justify-between items-center p-4 bg-[#F8FAFC] rounded-lg text-sm">
+                              <span className="font-bold text-[#0F172A]">{h.details}</span>
+                              <span className="text-slate-500">{h.timestamp}</span>
+                          </div>
+                      ))}
+                      {deletionHistory.length === 0 && <p className="text-slate-500">No deletions yet.</p>}
                   </div>
               </div>
 
@@ -1197,9 +1371,18 @@ export default function App() {
           </button>
           <DarkModeButton />
           <button onClick={() => setShowGuide(true)} className="text-[#2563EB] font-bold">Help</button>
+          <button onClick={() => setShowGitHubModal(true)} className="text-[#2563EB] font-bold">GitHub</button>
         </div>
       </header>
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+      <GitHubModal isOpen={showGitHubModal} onClose={() => setShowGitHubModal(false)} />
+      <ConfirmationModal 
+          isOpen={confirmationModal.isOpen}
+          title={confirmationModal.title}
+          message={confirmationModal.message}
+          onConfirm={confirmationModal.onConfirm}
+          onCancel={() => setConfirmationModal({...confirmationModal, isOpen: false})}
+      />
       {selectedStudentForProfile && (
         <StudentProfileModal 
           student={selectedStudentForProfile} 
@@ -1213,11 +1396,10 @@ export default function App() {
         {showFaceScanner ? (
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center">
             <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6">Camera Attendance</h2>
-            <video ref={videoRef} autoPlay playsInline className="mx-auto rounded-xl bg-[#0F172A] mb-6" width="320" height="240"></video>
+            <div className="relative mx-auto w-[320px] h-[240px] mb-6">
+                <video ref={videoRef} autoPlay playsInline className="rounded-xl bg-[#0F172A] w-full h-full" width="320" height="240"></video>
+            </div>
             <p className="mb-4 text-[#0F172A]/70 font-bold">{message}</p>
-            <button onClick={takePhotoAndMarkAttendance} disabled={hasMarkedToday(loggedInId!) || isAttendanceLocked} className={`px-8 py-3 rounded-lg font-bold w-full md:w-auto uppercase tracking-wide glow-button ${(hasMarkedToday(loggedInId!) || isAttendanceLocked) ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#16A34A] text-white hover:bg-[#15803d]'}`}>
-                {hasMarkedToday(loggedInId!) ? 'Attendance Marked Today' : isAttendanceLocked ? 'Attendance Locked' : 'Take Photo & Mark Attendance'}
-            </button>
              <button onClick={() => {setShowFaceScanner(false); setMessage('')}} className="ml-4 text-slate-500 font-bold glow-button">Close</button>
           </div>
         ) : (
@@ -1329,6 +1511,16 @@ export default function App() {
           </div>
         </div>
       </main>
+          {isGitHubVisible && <motion.a 
+            href="https://github.com/prajasus2308/attendance-2" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="fixed bottom-6 right-6 z-[100] bg-black text-white p-4 rounded-full shadow-lg cursor-grab active:cursor-grabbing"
+            drag
+            dragMomentum={false}
+          >
+            <Github size={24} />
+          </motion.a>}
 
           <Footer />
         </div>

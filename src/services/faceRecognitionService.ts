@@ -13,16 +13,16 @@ export const loadModels = async () => {
     }
 };
 
-export const detectFace = async (videoElement: HTMLVideoElement): Promise<boolean> => {
+export const detectFace = async (videoElement: HTMLVideoElement): Promise<blazeface.NormalizedFace[] | null> => {
     if (!model) {
         console.warn('Model not loaded yet.');
-        return false;
+        return null;
     }
     try {
         const predictions = await model.estimateFaces(videoElement, false);
-        return predictions.length > 0;
+        return predictions.length > 0 ? (predictions as blazeface.NormalizedFace[]) : null;
     } catch (error) {
         console.error('Face detection error:', error);
-        return false;
+        return null;
     }
 };
