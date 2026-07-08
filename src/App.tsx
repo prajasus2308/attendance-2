@@ -13,6 +13,7 @@ import html2canvas from "html2canvas";
 
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { GitHubModal } from './components/GitHubModal';
+import { SnapshotModal } from './components/SnapshotModal';
 import { QUOTES } from './constants';
 import { motion } from 'motion/react';
 import { detectFace, loadModels } from './services/faceRecognitionService';
@@ -352,6 +353,7 @@ export default function App() {
   const [calendarSearchQuery, setCalendarSearchQuery] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [confirmationModal, setConfirmationModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
 
@@ -1376,6 +1378,7 @@ export default function App() {
       </header>
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
       <GitHubModal isOpen={showGitHubModal} onClose={() => setShowGitHubModal(false)} />
+      <SnapshotModal isOpen={!!selectedSnapshot} onClose={() => setSelectedSnapshot(null)} photoData={selectedSnapshot ?? undefined} />
       <ConfirmationModal 
           isOpen={confirmationModal.isOpen}
           title={confirmationModal.title}
