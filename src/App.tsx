@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3, Github } from 'lucide-react';
+import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3, Github, ExternalLink } from 'lucide-react';
 import Papa from 'papaparse';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -279,8 +279,15 @@ const TeamSection = () => {
                 ))}
             </div>
             <div className="text-center mt-12">
-                <a href="https://github.com/prajasus2308/attendance-2" target="_blank" rel="noopener noreferrer" className="bg-[#2563EB] text-white px-8 py-3 rounded-full font-bold hover:bg-[#1D4ED8] transition-colors">
-                    SEE THE CODE
+                <a href="https://github.com/prajasus2308/attendance-2" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="p-2 bg-[#2563EB] rounded-lg text-white">
+                        <Github size={24} />
+                    </div>
+                    <div className="flex flex-col items-start">
+                        <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">FRONTEND · PRATYUSH CODES</span>
+                        <span className="text-blue-600 font-bold">prajasus2308</span>
+                    </div>
+                    <ExternalLink size={18} className="text-blue-600 ml-4" />
                 </a>
             </div>
         </section>
@@ -1084,7 +1091,7 @@ export default function App() {
               <main className="max-w-5xl mx-auto space-y-10">
                   <QuoteDisplay />
                   <div className="grid md:grid-cols-2 gap-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
                         <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                             <Users className="size-6 text-[#2563EB]" /> Manage Students
                         </h2>
@@ -1101,9 +1108,9 @@ export default function App() {
                             <Search className="absolute left-4 top-3.5 size-5 text-slate-400" />
                             <input type="text" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} placeholder="Search students..." className="w-full pl-12 pr-4 py-3 rounded-lg border border-slate-200 font-bold" />
                         </div>
-                    </div>
+                    </motion.div>
 
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 gap-y-4 flex flex-col">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 gap-y-4 flex flex-col">
                         <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                             <Settings className="size-6 text-[#2563EB]" /> Settings
                         </h2>
@@ -1137,11 +1144,11 @@ export default function App() {
                             <input type="text" value={manualStudentId} onChange={e => setManualStudentId(e.target.value)} placeholder="Student ID" className="flex-grow px-4 py-3 rounded-lg border border-slate-200 font-bold" />
                             <button onClick={() => { addManualAttendance(manualStudentId); setManualStudentId(''); }} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] glow-button">Mark Present</button>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
                       <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                           <BarChart3 className="size-6 text-[#2563EB]" /> Attendance Trends
                       </h2>
@@ -1157,8 +1164,8 @@ export default function App() {
                               </BarChart>
                           </ResponsiveContainer>
                       </div>
-                    </div>
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                    </motion.div>
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
                       <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                           <BarChart3 className="size-6 text-[#2563EB]" /> Today's Attendance
                       </h2>
@@ -1175,10 +1182,10 @@ export default function App() {
                               </PieChart>
                           </ResponsiveContainer>
                       </div>
-                    </div>
+                    </motion.div>
                 </div>
 
-                <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 col-span-full mt-8">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 col-span-full mt-8">
                     <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                         <FileText className="size-6 text-[#2563EB]" /> Attendance Summary (Current Month)
                     </h2>
@@ -1202,13 +1209,13 @@ export default function App() {
                             ))}
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
                 <ReportSection students={students} attendanceRecords={attendanceRecords} />
               </main>
               
               {/* Calendar Manager */}
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
                   <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                       <Clock className="size-6 text-[#2563EB]" /> School Calendar
                   </h2>
@@ -1231,10 +1238,10 @@ export default function App() {
                           </div>
                       ))}
                   </div>
-              </div>
+              </motion.div>
 
               {/* Deletion History */}
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8">
                   <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                       <Trash2 className="size-6 text-[#2563EB]" /> Deletion History
                   </h2>
@@ -1247,7 +1254,7 @@ export default function App() {
                       ))}
                       {deletionHistory.length === 0 && <p className="text-slate-500">No deletions yet.</p>}
                   </div>
-              </div>
+              </motion.div>
 
               {/* Student Profiles Viewer */}
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
