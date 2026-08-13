@@ -278,6 +278,11 @@ const TeamSection = () => {
                     </div>
                 ))}
             </div>
+            <div className="text-center mt-12">
+                <a href="https://github.com/prajasus2308/attendance-2" target="_blank" rel="noopener noreferrer" className="bg-[#2563EB] text-white px-8 py-3 rounded-full font-bold hover:bg-[#1D4ED8] transition-colors">
+                    SEE THE CODE
+                </a>
+            </div>
         </section>
     );
 };
@@ -309,16 +314,23 @@ export default function App() {
   const [filterEndDate, setFilterEndDate] = useState('');
   const [filterClass, setFilterClass] = useState('all');
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [newDate, setNewDate] = useState('');
-  const [newTitle, setNewTitle] = useState('');
-  const [newType, setNewType] = useState<CalendarEvent['type']>('event');
+  const [newDate, setNewDate] = useState(() => localStorage.getItem('autoSave_calendar_newDate') || '');
+  const [newTitle, setNewTitle] = useState(() => localStorage.getItem('autoSave_calendar_newTitle') || '');
+  const [newType, setNewType] = useState<CalendarEvent['type']>(() => (localStorage.getItem('autoSave_calendar_newType') as CalendarEvent['type']) || 'event');
   const [notifications, setNotifications] = useState<{id: string, message: string}[]>([]);
   const [showGuide, setShowGuide] = useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest');
-  const [manualStudentId, setManualStudentId] = useState('');
+  const [manualStudentId, setManualStudentId] = useState(() => localStorage.getItem('autoSave_manual_studentId') || '');
   const [attendanceThreshold, setAttendanceThreshold] = useState<number>(2);
   const [deletionHistory, setDeletionHistory] = useState<DeletionRecord[]>([]);
+
+  useEffect(() => {
+    localStorage.setItem('autoSave_calendar_newDate', newDate);
+    localStorage.setItem('autoSave_calendar_newTitle', newTitle);
+    localStorage.setItem('autoSave_calendar_newType', newType);
+    localStorage.setItem('autoSave_manual_studentId', manualStudentId);
+  }, [newDate, newTitle, newType, manualStudentId]);
   const [isAttendanceLocked, setIsAttendanceLocked] = useState(() => {
       const saved = localStorage.getItem('isAttendanceLocked');
       return saved ? JSON.parse(saved) : false;
@@ -376,6 +388,8 @@ export default function App() {
   );
 
   const [isGitHubVisible, setIsGitHubVisible] = useState(true);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [displayedName, setDisplayedName] = useState("");
   const studentName = students.find(s => s.id === loggedInId)?.name || 'Not set';
 
@@ -586,6 +600,8 @@ export default function App() {
     const updatedRecords = [...attendanceRecords, newRecord];
     setAttendanceRecords(updatedRecords);
     localStorage.setItem('student_attendance', JSON.stringify(updatedRecords));
+    setManualStudentId('');
+    localStorage.removeItem('autoSave_manual_studentId');
     addNotification('Manual attendance added!');
   };
 
@@ -796,7 +812,10 @@ export default function App() {
         const updated = [...calendarEvents, newEvent];
         setCalendarEvents(updated);
         localStorage.setItem('calendar_events', JSON.stringify(updated));
-        setNewDate(''); setNewTitle('');
+        setNewDate(''); setNewTitle(''); setNewType('event');
+        localStorage.removeItem('autoSave_calendar_newDate');
+        localStorage.removeItem('autoSave_calendar_newTitle');
+        localStorage.removeItem('autoSave_calendar_newType');
         addNotification('Event added!');
     }
   }
@@ -898,7 +917,6 @@ export default function App() {
                 <a href="#features" className="hover:text-[#2563EB]">Features</a>
                 <DarkModeButton />
                 <button onClick={() => setShowGuide(true)} className="text-[#2563EB] font-bold">Help</button>
-                <button onClick={() => setIsGitHubVisible(!isGitHubVisible)} className="text-[#2563EB] font-bold">{isGitHubVisible ? 'Hide GitHub' : 'Show GitHub'}</button>
                 <button onClick={() => setStudentId('admin')} className="text-[#2563EB] font-bold glow-button">Admin Login</button>
             </nav>
           </header>
@@ -1526,6 +1544,7 @@ export default function App() {
           </motion.a>}
 
           <Footer />
+          <audio ref={audioRef} loop src="https://actions.google.com/sounds/v1/nature/rain.ogg" />
         </div>
     </>
   );
