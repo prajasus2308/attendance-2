@@ -14,6 +14,7 @@ import html2canvas from "html2canvas";
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { GitHubModal } from './components/GitHubModal';
 import { SnapshotModal } from './components/SnapshotModal';
+import { MusicPlayer } from './components/MusicPlayer';
 import { QUOTES } from './constants';
 import { motion } from 'motion/react';
 import { detectFace, loadModels } from './services/faceRecognitionService';
@@ -262,8 +263,6 @@ const TeamSection = () => {
         { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
         { name: 'Anish', role: 'UI/UX Designer', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778261769527-c561fcd2-1343-4c2e-8b80-5dc9ef50fd48.jpeg' },
         { name: 'Kushagra', role: 'Graphic Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
-        { name: 'Sriyans', role: 'Collaborator', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778251044294-1fbb0df2-b124-42e4-af9c-2c128484a307.jpeg' },
-        { name: 'Hridyansh', role: 'Design Advisor', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778594779802-8594ec8e-1fb4-4c52-84bf-1c1329f42d4a.jpeg' },
     ];
     return (
         <section id="team" className="container mx-auto px-6 py-20">
@@ -388,8 +387,6 @@ export default function App() {
   );
 
   const [isGitHubVisible, setIsGitHubVisible] = useState(true);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
   const [displayedName, setDisplayedName] = useState("");
   const studentName = students.find(s => s.id === loggedInId)?.name || 'Not set';
 
@@ -1494,11 +1491,16 @@ export default function App() {
             <h2 className="text-2xl font-serif font-bold text-[#0F172A] flex items-center gap-3">
                 <Clock className="size-6 text-[#2563EB]" /> Attendance History
             </h2>
-            <select value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
-                <option value="all">All Time</option>
-                <option value="week">Last 7 Days</option>
-                <option value="month">Last 30 Days</option>
-            </select>
+            <div className="flex gap-2">
+                <button onClick={() => window.print()} className="bg-[#2563EB] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#1D4ED8] transition-colors">
+                    Print
+                </button>
+                <select value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
+                    <option value="all">All Time</option>
+                    <option value="week">Last 7 Days</option>
+                    <option value="month">Last 30 Days</option>
+                </select>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -1544,7 +1546,7 @@ export default function App() {
           </motion.a>}
 
           <Footer />
-          <audio ref={audioRef} loop src="https://actions.google.com/sounds/v1/nature/rain.ogg" />
+          <MusicPlayer />
         </div>
     </>
   );
