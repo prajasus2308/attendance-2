@@ -137,7 +137,7 @@ const GuideModal = ({ onClose }: { onClose: () => void }) => {
 const Footer = () => (
   <footer className="py-12 border-t border-slate-200 text-center text-slate-600 mt-10 bg-slate-50">
     <p>&copy; 2026 Attendance Solutions.</p>
-    <p className="mt-4 text-emerald-700 font-serif font-bold">Created by Pratyush Raj, Vedang, Anish, Kushagra, Sriyans, Hridyansh</p>
+    <p className="mt-4 text-emerald-700 font-serif font-bold">Created by Pratyush Raj, Vedang, Anish, Kushagra, Hridyansh</p>
   </footer>
 );
 
@@ -263,6 +263,7 @@ const TeamSection = () => {
         { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
         { name: 'Anish', role: 'UI/UX Designer', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778261769527-c561fcd2-1343-4c2e-8b80-5dc9ef50fd48.jpeg' },
         { name: 'Kushagra', role: 'Graphic Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
+        { name: 'Hridyansh', role: 'Design Advisor', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778594779802-8594ec8e-1fb4-4c52-84bf-1c1329f42d4a.jpeg' },
     ];
     return (
         <section id="team" className="container mx-auto px-6 py-20">
