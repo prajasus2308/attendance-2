@@ -284,7 +284,7 @@ const TeamSection = () => {
                         <Github size={24} />
                     </div>
                     <div className="flex flex-col items-start">
-                        <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">FRONTEND · PRATYUSH CODES</span>
+                        <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase border-l-4 border-[#c6daa9] pl-2">FRONTEND · PRATYUSH CODES</span>
                         <span className="text-blue-600 font-bold">prajasus2308</span>
                     </div>
                     <ExternalLink size={18} className="text-blue-600 ml-4" />
@@ -371,6 +371,8 @@ export default function App() {
   const [studentSort, setStudentSort] = useState('none');
   const [calendarSearchQuery, setCalendarSearchQuery] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [bulkYear, setBulkYear] = useState('');
+  const [bulkStatus, setBulkStatus] = useState('');
   const [confirmationModal, setConfirmationModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
   const [showGitHubModal, setShowGitHubModal] = useState(false);
@@ -755,6 +757,26 @@ export default function App() {
     });
   }
 
+  const handleBulkUpdate = () => {
+    if (!bulkYear && !bulkStatus) return;
+    const updated = students.map(s => {
+        if (selectedStudentIds.includes(s.id)) {
+            return {
+                ...s,
+                className: bulkYear ? `${bulkYear} Year` : s.className,
+                status: bulkStatus ? bulkStatus : s.status
+            };
+        }
+        return s;
+    });
+    setStudents(updated);
+    localStorage.setItem('students_list', JSON.stringify(updated));
+    setSelectedStudentIds([]);
+    setBulkYear('');
+    setBulkStatus('');
+    addNotification('Students updated!');
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const handleBulkImport = (e: ChangeEvent<HTMLInputElement>) => {
@@ -780,6 +802,34 @@ export default function App() {
             addNotification(`Imported ${newStudents.length} students!`);
         }
     });
+  };
+
+  const calculateStreak = (studentId: string) => {
+    const records = attendanceRecords
+      .filter(r => r.studentId === studentId)
+      .map(r => new Date(r.timestamp).toDateString());
+    
+    const uniqueDates = [...new Set(records)].sort((a,b) => new Date(b).getTime() - new Date(a).getTime());
+    
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    for (let i = 0; i < uniqueDates.length; i++) {
+        const date = new Date(uniqueDates[i]);
+        date.setHours(0,0,0,0);
+        
+        const expectedDate = new Date(today);
+        expectedDate.setDate(today.getDate() - i);
+        
+        if (date.getTime() === expectedDate.getTime()) {
+            streak++;
+        } else if (date.getTime() < expectedDate.getTime() && i > 0) {
+           break;
+        }
+    }
+    
+    return streak;
   };
 
   const deleteRecord = (id: string) => {
@@ -1264,7 +1314,22 @@ export default function App() {
                       </span>
                       <div className='flex gap-2'>
                         {selectedStudentIds.length > 0 && (
-                            <button onClick={bulkDeleteStudents} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2 glow-button text-sm"><Trash2 size={16}/> Delete ({selectedStudentIds.length})</button>
+                            <>
+                                <select value={bulkYear} onChange={e => setBulkYear(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
+                                    <option value="">Year</option>
+                                    <option value="1">1st Year</option>
+                                    <option value="2">2nd Year</option>
+                                    <option value="3">3rd Year</option>
+                                    <option value="4">4th Year</option>
+                                </select>
+                                <select value={bulkStatus} onChange={e => setBulkStatus(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
+                                    <option value="">Status</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                                <button onClick={handleBulkUpdate} className="bg-[#2563EB] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#1D4ED8] flex items-center gap-2 glow-button text-sm">Update ({selectedStudentIds.length})</button>
+                                <button onClick={bulkDeleteStudents} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2 glow-button text-sm"><Trash2 size={16}/> Delete</button>
+                            </>
                         )}
                         <select value={studentSort} onChange={e => setStudentSort(e.target.value)} className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm">
                             <option value="none">Sort by</option>
@@ -1300,6 +1365,7 @@ export default function App() {
                               <p className="text-sm text-center text-slate-500">ID: {s.id}</p>
                               <p className="text-sm text-center text-slate-500">Class: {s.className}</p>
                               <p className={`text-sm text-center font-bold ${isLow ? 'text-red-600' : 'text-slate-500'}`}>Attendance: {attendanceCount}</p>
+                              <p className="text-sm text-center text-blue-600 font-bold">Streak: {calculateStreak(s.id)} days</p>
                               {s.email && <p className="text-sm text-center text-slate-500">{s.email}</p>}
                               {s.phone && <p className="text-sm text-center text-slate-500">{s.phone}</p>}
                               {isLow && <p className="text-xs text-center text-red-600 font-bold mt-2">Low Attendance!</p>}
