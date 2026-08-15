@@ -1349,7 +1349,7 @@ export default function App() {
                           const attendanceCount = attendanceRecords.filter(r => r.studentId === s.id).length;
                           const isLow = attendanceCount < attendanceThreshold;
                           return (
-                          <div key={s.id} onClick={() => userRole === 'admin' && setSelectedStudentForProfile(s)} className={`cursor-pointer p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
+                          <div key={s.id} onClick={() => userRole === 'admin' && setSelectedStudentForProfile(s)} className={`cursor-pointer student-card p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
                               <input type="checkbox" className="absolute top-2 left-2 size-5" checked={selectedStudentIds.includes(s.id)} onChange={e => {
                                   if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
                                   else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
