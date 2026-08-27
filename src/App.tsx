@@ -11,11 +11,8 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
 
-import { ConfirmationModal } from './components/ConfirmationModal';
-import { GitHubModal } from './components/GitHubModal';
-import { SnapshotModal } from './components/SnapshotModal';
-import { MusicPlayer } from './components/MusicPlayer';
 import { QUOTES } from './constants';
+
 import { motion } from 'motion/react';
 import { detectFace, loadModels } from './services/faceRecognitionService';
 
@@ -373,9 +370,7 @@ export default function App() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [bulkYear, setBulkYear] = useState('');
   const [bulkStatus, setBulkStatus] = useState('');
-  const [confirmationModal, setConfirmationModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
-  const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
-  const [showGitHubModal, setShowGitHubModal] = useState(false);
+
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
 
@@ -1355,6 +1350,7 @@ export default function App() {
                                   if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
                                   else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
                               }} />
+                               {(() => { const isPresent = hasMarkedToday(s.id); return (<motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }} className={`absolute top-2 right-2 size-3 rounded-full ${isPresent ? "bg-green-500" : "bg-red-500"}`} title={isPresent ? "Present Today" : "Absent Today"} />); })()}
                               {s.photoUrl ? (
                                   <img src={s.photoUrl} alt={s.name} className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" />
                               ) : (
@@ -1471,19 +1467,9 @@ export default function App() {
           </button>
           <DarkModeButton />
           <button onClick={() => setShowGuide(true)} className="text-[#2563EB] font-bold">Help</button>
-          <button onClick={() => setShowGitHubModal(true)} className="text-[#2563EB] font-bold">GitHub</button>
         </div>
       </header>
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
-      <GitHubModal isOpen={showGitHubModal} onClose={() => setShowGitHubModal(false)} />
-      <SnapshotModal isOpen={!!selectedSnapshot} onClose={() => setSelectedSnapshot(null)} photoData={selectedSnapshot ?? undefined} />
-      <ConfirmationModal 
-          isOpen={confirmationModal.isOpen}
-          title={confirmationModal.title}
-          message={confirmationModal.message}
-          onConfirm={confirmationModal.onConfirm}
-          onCancel={() => setConfirmationModal({...confirmationModal, isOpen: false})}
-      />
       {selectedStudentForProfile && (
         <StudentProfileModal 
           student={selectedStudentForProfile} 
