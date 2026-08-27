@@ -377,6 +377,7 @@ export default function App() {
   const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
+  const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -1349,7 +1350,7 @@ export default function App() {
                           const attendanceCount = attendanceRecords.filter(r => r.studentId === s.id).length;
                           const isLow = attendanceCount < attendanceThreshold;
                           return (
-                          <div key={s.id} onClick={() => userRole === 'admin' && setSelectedStudentForProfile(s)} className={`cursor-pointer student-card p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
+                          <motion.div layout key={s.id} onClick={() => userRole === 'admin' && setExpandedStudentId(expandedStudentId === s.id ? null : s.id)} className={`cursor-pointer student-card p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
                               <input type="checkbox" className="absolute top-2 left-2 size-5" checked={selectedStudentIds.includes(s.id)} onChange={e => {
                                   if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
                                   else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
@@ -1368,8 +1369,16 @@ export default function App() {
                               <p className="text-sm text-center text-blue-600 font-bold">Streak: {calculateStreak(s.id)} days</p>
                               {s.email && <p className="text-sm text-center text-slate-500">{s.email}</p>}
                               {s.phone && <p className="text-sm text-center text-slate-500">{s.phone}</p>}
-                              {isLow && <p className="text-xs text-center text-red-600 font-bold mt-2">Low Attendance!</p>}
-                          </div>
+                              {expandedStudentId === s.id && (
+                                   <div
+                                       className="mt-4 pt-4 border-t border-slate-200 text-sm space-y-2"
+                                   >
+                                       <p>Email: {s.email || 'N/A'}</p>
+                                       <p>Phone: {s.phone || 'N/A'}</p>
+                                       <p>Academic Details: {s.academicDetails || 'None available'}</p>
+                                   </div>
+                               )}
+                          </motion.div>
                       )})}
                   </div>
                </div>
