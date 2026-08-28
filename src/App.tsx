@@ -307,6 +307,7 @@ export default function App() {
   const [loggedInId, setLoggedInId] = useState<string | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [newStudentId, setNewStudentId] = useState('');
   const [newName, setNewName] = useState('');
   const [newClass, setNewClass] = useState('');
   const [newSection, setNewSection] = useState('');
@@ -480,7 +481,21 @@ export default function App() {
             }
         });
     }
-  }, [calendarEvents, attendanceRecords, userRole, students, attendanceThreshold]);
+  }, [calendarEvents, userRole, attendanceRecords, students, attendanceThreshold]);
+
+  // Holiday Broadcast
+  useEffect(() => {
+    const today = new Date().toDateString();
+    calendarEvents.forEach(event => {
+      if (event.type === 'holiday' && new Date(event.date).toDateString() === today) {
+        const lastHolidayNotification = localStorage.getItem(`lastHolidayNotification_${event.date}`);
+        if (!lastHolidayNotification) {
+          addNotification(`Today is ${event.title}! Enjoy the holiday!`);
+          localStorage.setItem(`lastHolidayNotification_${event.date}`, 'true');
+        }
+      }
+    });
+  }, [calendarEvents]);
 
   useEffect(() => {
     const savedAttendance = localStorage.getItem('student_attendance');
@@ -830,7 +845,7 @@ export default function App() {
       .filter(r => r.studentId === studentId)
       .map(r => new Date(r.timestamp).toDateString());
     
-    const uniqueDates = [...new Set(records)].sort((a,b) => new Date(b).getTime() - new Date(a).getTime());
+    const uniqueDates: string[] = [...new Set(records)].sort((a: string, b: string) => new Date(b).getTime() - new Date(a).getTime());
     
     let streak = 0;
     const today = new Date();
@@ -1121,12 +1136,12 @@ export default function App() {
                             <tbody>
                                 {students.map(s => {
                                     const marked = hasMarkedToday(s.id);
-                                    const streak = Jn(s.id);
-                                    const markedCount = v.filter(dt => {
+                                    const streak = calculateStreak(s.id);
+                                    const markedCount = attendanceRecords.filter(dt => {
                                         const d = new Date(dt.timestamp);
                                         return dt.studentId === s.id && d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
                                     }).length;
-                                    const totalSchoolDays = new Set(v.filter(dt => {
+                                    const totalSchoolDays = new Set(attendanceRecords.filter(dt => {
                                         const d = new Date(dt.timestamp);
                                         return d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
                                     }).map(dt => new Date(dt.timestamp).toDateString())).size;
@@ -1145,8 +1160,14 @@ export default function App() {
                                             </td>
                                             <td className="py-4 flex items-center gap-4">
                                                 {marked ? 
-                                                    <span className='flex items-center gap-1 font-bold text-emerald-600'><CheckCircle className="text-emerald-500 size-5" /> Present</span> : 
-                                                    <span className='flex items-center gap-1 font-bold text-red-600'><X className="text-red-500 size-5" /> Absent</span>
+                                                    <span className='flex items-center gap-2 font-bold text-emerald-600'>
+                                                        <motion.div initial={{ opacity: 0.5, scale: 0.8 }} animate={{ opacity: 1, scale: 1.2 }} transition={{ repeat: Infinity, duration: 1.5, repeatType: "reverse" }} className='size-2.5 rounded-full bg-emerald-500'/>
+                                                        <CheckCircle className="text-emerald-500 size-5" /> Present
+                                                    </span> : 
+                                                    <span className='flex items-center gap-2 font-bold text-red-600'>
+                                                        <motion.div initial={{ opacity: 0.5, scale: 0.8 }} animate={{ opacity: 1, scale: 1.2 }} transition={{ repeat: Infinity, duration: 1.5, repeatType: "reverse" }} className='size-2.5 rounded-full bg-red-500'/>
+                                                        <X className="text-red-500 size-5" /> Absent
+                                                    </span>
                                                 }
                                                 <button 
                                                     onClick={() => addManualAttendance(s.id)} 
