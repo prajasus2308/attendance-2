@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3, ExternalLink, Code, School } from 'lucide-react';
+import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3, ExternalLink, Code, School, Mic } from 'lucide-react';
 import Papa from 'papaparse';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -307,8 +307,9 @@ export default function App() {
   const [loggedInId, setLoggedInId] = useState<string | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [newStudentId, setNewStudentId] = useState('');
+  const [newName, setNewName] = useState('');
   const [newClass, setNewClass] = useState('');
+  const [newSection, setNewSection] = useState('');
   const [showFaceScanner, setShowFaceScanner] = useState(false);
   const [message, setMessage] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -327,15 +328,10 @@ export default function App() {
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest');
   const [manualStudentId, setManualStudentId] = useState(() => localStorage.getItem('autoSave_manual_studentId') || '');
+  const [autoLockTime, setAutoLockTime] = useState(() => localStorage.getItem('autoLockTime') || '');
   const [attendanceThreshold, setAttendanceThreshold] = useState<number>(2);
   const [deletionHistory, setDeletionHistory] = useState<DeletionRecord[]>([]);
 
-  useEffect(() => {
-    localStorage.setItem('autoSave_calendar_newDate', newDate);
-    localStorage.setItem('autoSave_calendar_newTitle', newTitle);
-    localStorage.setItem('autoSave_calendar_newType', newType);
-    localStorage.setItem('autoSave_manual_studentId', manualStudentId);
-  }, [newDate, newTitle, newType, manualStudentId]);
   const [isAttendanceLocked, setIsAttendanceLocked] = useState(() => {
       const saved = localStorage.getItem('isAttendanceLocked');
       return saved ? JSON.parse(saved) : false;
@@ -343,6 +339,32 @@ export default function App() {
   const [attendanceLockedDate, setAttendanceLockedDate] = useState(() => {
     return localStorage.getItem('attendanceLockedDate') || null;
   });
+
+  useEffect(() => {
+    localStorage.setItem('autoSave_calendar_newDate', newDate);
+    localStorage.setItem('autoSave_calendar_newTitle', newTitle);
+    localStorage.setItem('autoSave_calendar_newType', newType);
+    localStorage.setItem('autoSave_manual_studentId', manualStudentId);
+    localStorage.setItem('autoLockTime', autoLockTime);
+  }, [newDate, newTitle, newType, manualStudentId, autoLockTime]);
+
+  useEffect(() => {
+    const checkLock = () => {
+        if (autoLockTime && !isAttendanceLocked) {
+            const now = new Date();
+            const [hours, minutes] = autoLockTime.split(':').map(Number);
+            if (now.getHours() === hours && now.getMinutes() >= minutes) {
+                setIsAttendanceLocked(true);
+                setAttendanceLockedDate(now.toDateString());
+                localStorage.setItem('isAttendanceLocked', JSON.stringify(true));
+                localStorage.setItem('attendanceLockedDate', now.toDateString());
+                addNotification('Attendance automatically locked!');
+            }
+        }
+    };
+    const interval = setInterval(checkLock, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [autoLockTime, isAttendanceLocked]);
 
   useEffect(() => {
     const today = new Date().toDateString();
@@ -421,7 +443,7 @@ export default function App() {
   }, [studentName]);
 
   const addNotification = (message: string) => {
-    const id = Date.now().toString();
+    const id = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
     setNotifications(prev => [...prev, {id, message}]);
     setTimeout(() => {
         setNotifications(prev => prev.filter(n => n.id !== id));
@@ -715,11 +737,11 @@ export default function App() {
 
   const addStudent = () => {
     if(newStudentId && !students.find(s => s.id === newStudentId)) {
-        const newStudent = { id: newStudentId, className: newClass || 'N/A', section: 'N/A' };
+        const newStudent = { id: newStudentId, name: newName, className: newClass || 'N/A', section: newSection || 'N/A' };
         const updated = [...students, newStudent];
         setStudents(updated);
         localStorage.setItem('students_list', JSON.stringify(updated));
-        setNewStudentId(''); setNewClass('');
+        setNewStudentId(''); setNewName(''); setNewClass(''); setNewSection('');
         addNotification('Student added successfully!');
     }
   }
@@ -739,27 +761,22 @@ export default function App() {
   }
 
   const bulkDeleteStudents = () => {
-    setConfirmationModal({
-        isOpen: true,
-        title: 'Confirm Delete',
-        message: `Are you sure you want to delete ${selectedStudentIds.length} students?`,
-        onConfirm: () => {
-            const updated = students.filter(s => !selectedStudentIds.includes(s.id));
-            setStudents(updated);
-            localStorage.setItem('students_list', JSON.stringify(updated));
-            
-            setDeletionHistory(prev => {
-                const records: DeletionRecord[] = selectedStudentIds.map(id => ({ id: Date.now().toString() + id, targetId: id, details: `Bulk deleted student ${id}`, timestamp: new Date().toLocaleString(), type: 'student' }));
-                const history = [...records, ...prev];
-                localStorage.setItem('deletion_history', JSON.stringify(history));
-                return history;
-            });
-            
-            setSelectedStudentIds([]);
-            addNotification('Students deleted!');
-        }
-    });
-  }
+    if (window.confirm(`Are you sure you want to delete ${selectedStudentIds.length} students?`)) {
+        const updated = students.filter(s => !selectedStudentIds.includes(s.id));
+        setStudents(updated);
+        localStorage.setItem('students_list', JSON.stringify(updated));
+        
+        setDeletionHistory(prev => {
+            const records: DeletionRecord[] = selectedStudentIds.map(id => ({ id: Date.now().toString() + id, targetId: id, details: `Bulk deleted student ${id}`, timestamp: new Date().toLocaleString(), type: 'student' }));
+            const history = [...records, ...prev];
+            localStorage.setItem('deletion_history', JSON.stringify(history));
+            return history;
+        });
+        
+        setSelectedStudentIds([]);
+        addNotification('Students deleted!');
+    }
+  };
 
   const handleBulkUpdate = () => {
     if (!bulkYear && !bulkStatus) return;
@@ -970,7 +987,7 @@ export default function App() {
           <div className="fixed inset-0 -z-0 bg-white/30"></div>
 
           <header className="sticky top-0 w-full p-6 flex flex-wrap justify-between items-center z-50 bg-white/60 backdrop-blur-md shadow-sm border-b border-white/20">
-            <h1 className="italic underline text-center font-serif leading-[26px] text-[25px] font-bold tracking-tight text-[#2563EB] flex items-center gap-2"><motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 4 }}><School className="size-8" /></motion.div> DAV MODEL SCHOOL ATTENDANCE SYSTEM</h1>
+            <h1 className="italic underline text-center font-serif leading-[26px] text-[25px] font-bold tracking-tight text-[#2563EB] flex items-center gap-2"><motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 4 }}><School className="size-8 text-[#2563EB] dark:text-blue-400" /></motion.div> DAV MODEL SCHOOL ATTENDANCE SYSTEM</h1>
             <nav className="flex flex-wrap gap-3 sm:gap-6 font-semibold text-[#0F172A]/80 dark:text-white/80">
                 <a href="#about" className="hover:text-[#2563EB]">About</a>
                 <a href="#features" className="hover:text-[#2563EB]">Features</a>
@@ -1096,16 +1113,36 @@ export default function App() {
                                 <tr className="text-left text-xs uppercase tracking-widest text-[#0F172A]/50 border-b border-slate-100">
                                     <th className="pb-4">Student ID</th>
                                     <th className="pb-4">Class</th>
+                                    <th className="pb-4">Streak</th>
+                                    <th className="pb-4">Attendance %</th>
                                     <th className="pb-4">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {students.map(s => {
                                     const marked = hasMarkedToday(s.id);
+                                    const streak = Jn(s.id);
+                                    const markedCount = v.filter(dt => {
+                                        const d = new Date(dt.timestamp);
+                                        return dt.studentId === s.id && d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
+                                    }).length;
+                                    const totalSchoolDays = new Set(v.filter(dt => {
+                                        const d = new Date(dt.timestamp);
+                                        return d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
+                                    }).map(dt => new Date(dt.timestamp).toDateString())).size;
+                                    const percentage = totalSchoolDays > 0 ? Math.round((markedCount / totalSchoolDays) * 100) : 0;
                                     return (
                                         <tr key={s.id} className={`border-b ${marked ? 'bg-emerald-50' : 'bg-red-50'}`}>
                                             <td className="py-4 font-bold text-[#0F172A]">{s.id}</td>
                                             <td className="py-4 text-[#0F172A]/70">{s.className}</td>
+                                            <td className="py-4 font-bold text-orange-600 flex items-center gap-1">
+                                                {streak > 0 && <span>🔥 {streak}</span>}
+                                            </td>
+                                            <td className="py-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${percentage >= 80 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {percentage}%
+                                                </span>
+                                            </td>
                                             <td className="py-4 flex items-center gap-4">
                                                 {marked ? 
                                                     <span className='flex items-center gap-1 font-bold text-emerald-600'><CheckCircle className="text-emerald-500 size-5" /> Present</span> : 
@@ -1155,10 +1192,42 @@ export default function App() {
                         <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                             <Users className="size-6 text-[#2563EB]" /> Manage Students
                         </h2>
-                        <div className="flex gap-4 mb-6">
-                            <input type="text" value={newStudentId} onChange={e => setNewStudentId(e.target.value)} placeholder="New Student ID" className="flex-grow px-4 py-3 rounded-lg border border-slate-200 font-bold" />
-                            <input type="text" value={newClass} onChange={e => setNewClass(e.target.value)} placeholder="Class" className="w-24 px-4 py-3 rounded-lg border border-slate-200 font-bold" />
-                            <button onClick={addStudent} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] glow-button"><Plus /></button>
+                        <div className="flex flex-col gap-4 mb-6">
+                            <div className="relative flex-grow">
+                                <input type="text" value={newStudentId} onChange={e => setNewStudentId(e.target.value)} placeholder="Student ID" className="w-full px-4 py-3 rounded-lg border border-slate-200 font-bold pr-12" />
+                                <button onClick={() => {
+                                    const rec = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)();
+                                    rec.onresult = (e: any) => setNewStudentId(e.results[0][0].transcript);
+                                    rec.start();
+                                }} className="absolute right-2 top-2 p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-[#2563EB]"><Mic size={20}/></button>
+                            </div>
+                            <div className="relative flex-grow">
+                                <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name" className="w-full px-4 py-3 rounded-lg border border-slate-200 font-bold pr-12" />
+                                <button onClick={() => {
+                                    const rec = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)();
+                                    rec.onresult = (e: any) => setNewName(e.results[0][0].transcript);
+                                    rec.start();
+                                }} className="absolute right-2 top-2 p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-[#2563EB]"><Mic size={20}/></button>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="relative w-28">
+                                    <input type="text" value={newClass} onChange={e => setNewClass(e.target.value)} placeholder="Class" className="w-full px-4 py-3 rounded-lg border border-slate-200 font-bold pr-12" />
+                                    <button onClick={() => {
+                                        const rec = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)();
+                                        rec.onresult = (e: any) => setNewClass(e.results[0][0].transcript);
+                                        rec.start();
+                                    }} className="absolute right-2 top-2 p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-[#2563EB]"><Mic size={20}/></button>
+                                </div>
+                                <div className="relative w-28">
+                                    <input type="text" value={newSection} onChange={e => setNewSection(e.target.value)} placeholder="Section" className="w-full px-4 py-3 rounded-lg border border-slate-200 font-bold pr-12" />
+                                    <button onClick={() => {
+                                        const rec = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)();
+                                        rec.onresult = (e: any) => setNewSection(e.results[0][0].transcript);
+                                        rec.start();
+                                    }} className="absolute right-2 top-2 p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-[#2563EB]"><Mic size={20}/></button>
+                                </div>
+                                <button onClick={addStudent} className="flex-grow bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] glow-button"><Plus /></button>
+                            </div>
                         </div>
                         <div className="flex gap-4 mb-6">
                             <input type="file" ref={fileInputRef} onChange={handleBulkImport} accept=".csv" className='hidden' />
@@ -1196,6 +1265,10 @@ export default function App() {
                               }} className={`px-4 py-2 rounded-lg font-bold ${isAttendanceLocked ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}>
                                 {isAttendanceLocked ? 'Locked' : 'Unlocked'}
                              </button>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <label className="font-bold text-[#0F172A]">Auto-lock Time:</label>
+                            <input type="time" value={autoLockTime} onChange={e => setAutoLockTime(e.target.value)} className="px-4 py-3 rounded-lg border border-slate-200 font-bold" />
                         </div>
                         <h2 className="text-2xl font-serif font-bold text-[#0F172A] mt-6 mb-6 flex items-center gap-3">
                             <Edit2 className="size-6 text-[#2563EB]" /> Manual Override
@@ -1407,6 +1480,11 @@ export default function App() {
                       <div className="relative flex-grow">
                           <Search className="absolute left-3 top-3 size-4 text-slate-400" />
                           <input type="text" placeholder="Search by Student ID" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 font-bold text-sm" />
+                          <button onClick={() => {
+                              const rec = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)();
+                              rec.onresult = (e: any) => setStudentSearchQuery(e.results[0][0].transcript);
+                              rec.start();
+                          }} className="absolute right-3 top-2.5 text-slate-400 hover:text-[#2563EB]"><Mic size={16}/></button>
                        </div>
                        <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="border border-slate-200 rounded-lg p-2 font-bold text-sm">
                            <option value="all">All Classes</option>
