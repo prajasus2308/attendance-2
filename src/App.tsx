@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3, Github, ExternalLink } from 'lucide-react';
+import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3, ExternalLink, Code, School } from 'lucide-react';
 import Papa from 'papaparse';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -279,7 +279,7 @@ const TeamSection = () => {
             <div className="text-center mt-12">
                 <a href="https://github.com/prajasus2308/attendance-2" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="p-2 bg-[#2563EB] rounded-lg text-white">
-                        <Github size={24} />
+                        <Code size={24} />
                     </div>
                     <div className="flex flex-col items-start">
                         <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase border-l-4 border-[#c6daa9] pl-2">FRONTEND · PRATYUSH CODES</span>
@@ -374,6 +374,7 @@ export default function App() {
 
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
+  const isMarkingAttendance = useRef(false);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -393,7 +394,8 @@ export default function App() {
     </button>
   );
 
-  const [isGitHubVisible, setIsGitHubVisible] = useState(true);
+  // const [isGitHubVisible, setIsGitHubVisible] = useState(true); // Removed as it was only used for the GitHub button
+
   const [displayedName, setDisplayedName] = useState("");
   const studentName = students.find(s => s.id === loggedInId)?.name || 'Not set';
 
@@ -557,15 +559,19 @@ export default function App() {
   };
 
   const markAttendance = (photoData?: string) => {
-    if (!loggedInId || userRole !== 'student') return;
+    if (!loggedInId || userRole !== 'student' || isMarkingAttendance.current) return;
+    
+    isMarkingAttendance.current = true;
     
     if (isAttendanceLocked) {
         addNotification('Attendance is locked by admin!');
+        isMarkingAttendance.current = false;
         return;
     }
     
     if (hasMarkedToday(loggedInId)) {
         addNotification('Attendance already marked for today!');
+        isMarkingAttendance.current = false;
         return;
     }
 
@@ -581,6 +587,7 @@ export default function App() {
     setShowFaceScanner(false);
     setMessage('');
     addNotification('Attendance marked successfully!');
+    isMarkingAttendance.current = false;
   };
 
   const addManualAttendance = (studentId: string) => {
@@ -963,7 +970,7 @@ export default function App() {
           <div className="fixed inset-0 -z-0 bg-white/30"></div>
 
           <header className="sticky top-0 w-full p-6 flex flex-wrap justify-between items-center z-50 bg-white/60 backdrop-blur-md shadow-sm border-b border-white/20">
-            <h1 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-[#2563EB] flex items-center gap-2"><GraduationCap className="size-8" /> DAV MODEL</h1>
+            <h1 className="italic underline text-center font-serif leading-[26px] text-[25px] font-bold tracking-tight text-[#2563EB] flex items-center gap-2"><motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 4 }}><School className="size-8" /></motion.div> DAV MODEL SCHOOL ATTENDANCE SYSTEM</h1>
             <nav className="flex flex-wrap gap-3 sm:gap-6 font-semibold text-[#0F172A]/80 dark:text-white/80">
                 <a href="#about" className="hover:text-[#2563EB]">About</a>
                 <a href="#features" className="hover:text-[#2563EB]">Features</a>
@@ -989,11 +996,17 @@ export default function App() {
                     An efficient, secure, and modern way to manage student attendance using state-of-the-art face recognition technology.
                 </p>
                 
-                <div id="login" className="bg-white p-10 rounded-2xl shadow-xl border border-slate-100 max-w-sm w-full mx-auto">
-                    <h3 className="text-2xl font-bold mb-8 text-center text-[#0F172A]">Login</h3>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    id="login" 
+                    className="bg-white/40 backdrop-blur-lg border border-white/60 shadow-xl rounded-2xl p-10 max-w-sm w-full mx-auto"
+                >
+                    <h3 className="text-2xl font-bold mb-8 text-center text-[#0F172A] font-serif tracking-tight">Login</h3>
                     <div className="flex gap-2 mb-6">
                         {['student', 'teacher', 'admin'].map(r => (
-                          <button key={r} onClick={() => setLoginRole(r as any)} className={`flex-grow py-2 rounded-lg font-bold capitalize ${loginRole === r ? 'bg-[#2563EB] text-white' : 'bg-slate-200 text-slate-600'}`}>{r}</button>
+                          <button key={r} onClick={() => setLoginRole(r as any)} className={`flex-grow py-2.5 rounded-xl font-sans text-xs font-semibold tracking-wider uppercase transition-all duration-300 ${loginRole === r ? 'bg-[#2563EB] text-white shadow-md' : 'bg-white/30 text-slate-600 hover:bg-white/50 hover:text-slate-800 backdrop-blur-sm'}`}>{r}</button>
                         ))}
                     </div>
                     
@@ -1018,7 +1031,7 @@ export default function App() {
                         Login
                         </button>
                     </form>
-                </div>
+                </motion.div>
             </section>
 
             {/* About Section */}
@@ -1346,7 +1359,7 @@ export default function App() {
                           const attendanceCount = attendanceRecords.filter(r => r.studentId === s.id).length;
                           const isLow = attendanceCount < attendanceThreshold;
                           return (
-                          <motion.div layout key={s.id} onClick={() => userRole === 'admin' && setExpandedStudentId(expandedStudentId === s.id ? null : s.id)} className={`cursor-pointer student-card p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
+                          <motion.div layout key={s.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(37, 99, 235, 0.2)" }} onClick={() => userRole === 'admin' && setExpandedStudentId(expandedStudentId === s.id ? null : s.id)} className={`cursor-pointer student-card p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
                               <input type="checkbox" className="absolute top-0 left-0 w-11 h-11 accent-[#2563EB] cursor-pointer" checked={selectedStudentIds.includes(s.id)} onChange={e => {
                                   if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
                                   else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
@@ -1604,16 +1617,7 @@ export default function App() {
           </div>
         </div>
       </main>
-          {isGitHubVisible && <motion.a 
-            href="https://github.com/prajasus2308/attendance-2" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="fixed bottom-6 right-6 z-[100] bg-black text-white p-4 rounded-full shadow-lg cursor-grab active:cursor-grabbing"
-            drag
-            dragMomentum={false}
-          >
-            <Github size={24} />
-          </motion.a>}
+
 
           <Footer />
 
