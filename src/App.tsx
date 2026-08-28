@@ -10,6 +10,7 @@ import Papa from 'papaparse';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
+import { Analytics } from '@vercel/analytics/react';
 
 import { QUOTES } from './constants';
 
@@ -1617,6 +1618,7 @@ export default function App() {
           <Footer />
 
         </div>
+        <Analytics />
     </>
   );
 }
