@@ -1239,7 +1239,7 @@ export default function App() {
                         <div>
                             <h3 className="font-bold text-emerald-600 mb-4">Top 5 Students</h3>
                             {topStudents.map(s => (
-                                <div key={s.id} className="flex justify-between py-2 border-b">
+                                <div key={`top-${s.id}`} className="flex justify-between py-2 border-b">
                                     <span>{s.name}</span>
                                     <span className="font-bold">{s.count} days</span>
                                 </div>
@@ -1248,7 +1248,7 @@ export default function App() {
                         <div>
                             <h3 className="font-bold text-red-600 mb-4">Bottom 5 Students</h3>
                             {bottomStudents.map(s => (
-                                <div key={s.id} className="flex justify-between py-2 border-b">
+                                <div key={`bottom-${s.id}`} className="flex justify-between py-2 border-b">
                                     <span>{s.name}</span>
                                     <span className="font-bold">{s.count} days</span>
                                 </div>
@@ -1346,7 +1346,7 @@ export default function App() {
                           const isLow = attendanceCount < attendanceThreshold;
                           return (
                           <motion.div layout key={s.id} onClick={() => userRole === 'admin' && setExpandedStudentId(expandedStudentId === s.id ? null : s.id)} className={`cursor-pointer student-card p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
-                              <input type="checkbox" className="absolute top-2 left-2 size-5" checked={selectedStudentIds.includes(s.id)} onChange={e => {
+                              <input type="checkbox" className="absolute top-0 left-0 w-11 h-11 accent-[#2563EB] cursor-pointer" checked={selectedStudentIds.includes(s.id)} onChange={e => {
                                   if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
                                   else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
                               }} />
@@ -1615,7 +1615,7 @@ export default function App() {
           </motion.a>}
 
           <Footer />
-          <MusicPlayer />
+
         </div>
     </>
   );
