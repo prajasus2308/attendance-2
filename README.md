@@ -1,2 +1,1 @@
-#ATTENDANCE SYSTEM 
-SCHOOL project
+
