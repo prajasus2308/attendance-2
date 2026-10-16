@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { User, LogOut, CheckCircle, Clock, Camera, Trash2, Plus, Users, FileText, UserPlus, Download, Quote, GraduationCap, Edit2, Save, X, Search, Settings, Upload, BarChart3, ExternalLink, Code, School, Mic } from 'lucide-react';
 import Papa from 'papaparse';
 import { jsPDF } from "jspdf";
@@ -12,6 +12,8 @@ import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
 import { Analytics } from '@vercel/analytics/react';
 
+import { FloatingQuickActionMenu } from './components/FloatingQuickActionMenu';
+import AttendanceLeaderboard from './components/AttendanceLeaderboard';
 import { QUOTES } from './constants';
 
 import { motion } from 'motion/react';
@@ -53,6 +55,7 @@ interface Student {
     phone?: string;
     photoUrl?: string;
     academicDetails?: string;
+    notes?: string;
     documents?: FileItem[];
 }
 
@@ -84,9 +87,10 @@ const NotificationToast = ({ notifications }: { notifications: { id: string, mes
       {notifications.map(n => (
         <motion.div
             key={n.id}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            exit={{ opacity: 0, y: -20 }}
             className="bg-[#0F172A] text-white p-4 rounded-lg shadow-lg pointer-events-auto"
         >
           {n.message}
@@ -144,40 +148,39 @@ const ReportSection = ({ students, attendanceRecords }: { students: Student[], a
     const classes = Array.from(new Set(students.map(s => s.className)));
     const [selectedClass, setSelectedClass] = useState(classes[0] || '');
 
-    const generatePDF = async () => {
-        const doc = new jsPDF();
-        doc.text(`Monthly Attendance Report - Class ${selectedClass}`, 10, 10);
-
-        // Summary Table
+    const generateContactList = () => {
         const classStudents = students.filter(s => s.className === selectedClass);
-        const data = classStudents.map(s => {
-            const count = attendanceRecords.filter(r => r.studentId === s.id).length;
-            return [s.id, s.name || 'Unknown', count];
-        });
+        const csvContent = "data:text/csv;charset=utf-8," + 
+            "Name,ID,Email,Phone\n" +
+            classStudents.map(s => `${s.name || 'N/A'},${s.id},${s.email || ''},${s.phone || ''}`).join("\n");
         
-        autoTable(doc, { head: [['ID', 'Name', 'Present Days']], body: data });
-
-        // Chart
-        const chartDiv = document.getElementById('report-chart');
-        if (chartDiv) {
-            const canvas = await html2canvas(chartDiv);
-            const imgData = canvas.toDataURL('image/png');
-            doc.addImage(imgData, 'PNG', 10, (doc as any).lastAutoTable.finalY + 10, 180, 100);
-        }
-
-        doc.save(`AttendanceReport_${selectedClass}.pdf`);
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `ContactList_${selectedClass}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     return (
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mt-8">
+        <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.5 }}
+            className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mt-8"
+        >
             <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                 Generate Reports
             </h2>
             <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="p-3 rounded-lg border border-slate-200 font-bold mb-4 w-full">
                 {classes.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <button onClick={generatePDF} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] w-full">Export PDF</button>
-        </div>
+            <div className='flex gap-4'>
+                <button onClick={() => generatePDF(selectedClass)} className="bg-[#2563EB] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#1d4ed8] w-full">Export PDF</button>
+                <button onClick={generateContactList} className="bg-[#16A34A] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#15803d] w-full">Export Contacts (CSV)</button>
+            </div>
+        </motion.div>
     );
 };
 
@@ -213,8 +216,10 @@ const StudentProfileModal = ({ student, onClose, onUpdateStudent }: { student: S
       reader.readAsDataURL(file);
     };
 
+    const [notes, setNotes] = useState(student.notes || '');
+
     const saveChanges = () => {
-        onUpdateStudent({ ...student, documents });
+        onUpdateStudent({ ...student, documents, notes });
         onClose();
         alert('Saved!');
     };
@@ -240,6 +245,10 @@ const StudentProfileModal = ({ student, onClose, onUpdateStudent }: { student: S
                         </div>
                     ))}
                 </div>
+                <div className="mt-4">
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Notes (Admin)</label>
+                    <textarea value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg" rows={4} />
+                </div>
                 <button onClick={saveChanges} className="mt-6 bg-green-600 text-white p-3 rounded-lg w-full font-bold">Save</button>
                 <button onClick={() => window.print()} className="mt-2 bg-purple-600 text-white p-3 rounded-lg w-full font-bold">Print ID Card</button>
             </div>
@@ -257,25 +266,58 @@ const StudentProfileModal = ({ student, onClose, onUpdateStudent }: { student: S
 
 const TeamSection = () => {
     const team = [
-        { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778249315889-c3c54a84-1ecc-4385-858e-c95a3a8cde2f.jpeg' },
-        { name: 'Vedang', role: 'Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249372007-1055fcc4-9339-4b09-b1dd-0a3e545fb21b.png' },
-        { name: 'Anish', role: 'UI/UX Designer', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778261769527-c561fcd2-1343-4c2e-8b80-5dc9ef50fd48.jpeg' },
-        { name: 'Kushagra', role: 'Graphic Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg' },
-        { name: 'Hridyansh', role: 'Design Advisor', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778594779802-8594ec8e-1fb4-4c52-84bf-1c1329f42d4a.jpeg' },
+        { name: 'Pratyush Raj', role: 'Creator', icon: '💡', imageUrl: 'https://www.image2url.com/r2/default/images/1778249315889-c3c54a84-1ecc-4385-858e-c95a3a8cde2f.jpeg', bio: 'Creator and Lead Developer of the Attendance System.', github: 'https://github.com/prajasus2308' },
+        { name: 'Anish', role: 'UI/UX Designer', icon: '🤝', imageUrl: 'https://www.image2url.com/r2/default/images/1778261769527-c561fcd2-1343-4c2e-8b80-5dc9ef50fd48.jpeg', bio: 'Specializes in creating intuitive and engaging user interfaces.', github: '#' },
+        { name: 'Kushagra', role: 'Graphic Designer', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778249874037-2d652a82-f634-405e-bf2c-a3f8ba8be82c.jpeg', bio: 'Creative designer focused on visual storytelling and branding.', github: '#' },
+        { name: 'Hridyansh', role: 'Design Advisor', icon: '🎨', imageUrl: 'https://www.image2url.com/r2/default/images/1778594779802-8594ec8e-1fb4-4c52-84bf-1c1329f42d4a.jpeg', bio: 'Provides strategic design advice and aesthetic guidance.', github: 'https://github.com/Hgoyal701' },
     ];
+    const [selectedMember, setSelectedMember] = useState<typeof team[0] | null>(null);
+
     return (
         <section id="team" className="container mx-auto px-6 py-20">
             <h3 className="text-4xl font-serif font-bold text-center mb-16">Meet Our Team</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+            <motion.div 
+                className="grid grid-cols-2 md:grid-cols-4 gap-8"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, staggerChildren: 0.1 }}
+            >
                 {team.map((member, i) => (
-                    <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
-                        <img src={member.imageUrl} alt={member.name} className="w-24 h-24 rounded-full mx-auto mb-4 object-cover" />
-                        <div className="text-2xl mb-2">{member.icon}</div>
+                    <motion.div 
+                        key={i} 
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.3 }}
+                        whileHover={{ scale: 1.05 }}
+                        className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center flex flex-col items-center cursor-pointer"
+                        onClick={() => setSelectedMember(member)}
+                    >
+                        <img src={member.imageUrl} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-slate-50" />
+                        <div className="text-5xl mb-4">{member.icon}</div>
                         <h4 className="font-bold text-lg text-[#0F172A]">{member.name}</h4>
                         <p className="text-[#2563EB] font-medium">{member.role}</p>
-                    </div>
+                    </motion.div>
                 ))}
-            </div>
+            </motion.div>
+
+            {selectedMember && (
+                <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" onClick={() => setSelectedMember(null)}>
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 className="text-2xl font-bold mb-4">{selectedMember.name}</h2>
+                        <p className="text-slate-600 mb-4">{selectedMember.bio}</p>
+                        <a href={selectedMember.github} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold block mb-4">View GitHub</a>
+                        <button onClick={() => setSelectedMember(null)} className="bg-[#2563EB] text-white px-4 py-2 rounded-lg">Close</button>
+                    </motion.div>
+                </div>
+            )}
+            
             <div className="text-center mt-12">
                 <a href="https://github.com/prajasus2308/attendance-2" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="p-2 bg-[#2563EB] rounded-lg text-white">
@@ -331,6 +373,11 @@ export default function App() {
   const [manualStudentId, setManualStudentId] = useState(() => localStorage.getItem('autoSave_manual_studentId') || '');
   const [autoLockTime, setAutoLockTime] = useState(() => localStorage.getItem('autoLockTime') || '');
   const [attendanceThreshold, setAttendanceThreshold] = useState<number>(2);
+  const [totalSchoolDays, setTotalSchoolDays] = useState<number>(() => {
+      const stored = localStorage.getItem('totalSchoolDays');
+      const parsed = stored ? parseInt(stored) : 200;
+      return isNaN(parsed) ? 200 : parsed;
+  });
   const [deletionHistory, setDeletionHistory] = useState<DeletionRecord[]>([]);
 
   const [isAttendanceLocked, setIsAttendanceLocked] = useState(() => {
@@ -450,6 +497,55 @@ export default function App() {
         setNotifications(prev => prev.filter(n => n.id !== id));
     }, 5000);
   }
+
+  const [trendDays, setTrendDays] = useState(7);
+
+  const getAttendanceTrendData = (days: number) => {
+    const data = [];
+    for (let i = days - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toDateString();
+        const count = attendanceRecords.filter(r => new Date(r.timestamp).toDateString() === dateStr).length;
+        data.push({ date: date.toLocaleDateString(), count });
+    }
+    return data;
+  };
+
+  const getClassAttendanceData = () => {
+    const classes = Array.from(new Set(students.map(s => s.className)));
+    return classes.map(className => {
+        const classStudents = students.filter(s => s.className === className);
+        const totalPossible = classStudents.length * totalSchoolDays;
+        const totalActual = classStudents.reduce((acc, s) => acc + attendanceRecords.filter(r => r.studentId === s.id).length, 0);
+        const rate = totalPossible > 0 ? Math.round((totalActual / totalPossible) * 100) : 0;
+        return { name: className, rate };
+    });
+  };
+
+  const generatePDF = async (className: string) => {
+    const doc = new jsPDF();
+    doc.text(`Monthly Attendance Report - Class ${className}`, 10, 10);
+
+    // Summary Table
+    const classStudents = students.filter(s => s.className === className);
+    const data = classStudents.map(s => {
+        const count = attendanceRecords.filter(r => r.studentId === s.id).length;
+        return [s.id, s.name || 'Unknown', count];
+    });
+    
+    autoTable(doc, { head: [['ID', 'Name', 'Present Days']], body: data });
+
+    // Chart
+    const chartDiv = document.getElementById('report-chart');
+    if (chartDiv) {
+        const canvas = await html2canvas(chartDiv);
+        const imgData = canvas.toDataURL('image/png');
+        doc.addImage(imgData, 'PNG', 10, (doc as any).lastAutoTable.finalY + 10, 180, 100);
+    }
+
+    doc.save(`AttendanceReport_${className}.pdf`);
+  };
 
   useEffect(() => {
     // Only run when data is available
@@ -761,6 +857,21 @@ export default function App() {
     }
   }
 
+  const toggleAttendanceLock = () => {
+    const newLockedStatus = !isAttendanceLocked;
+    setIsAttendanceLocked(newLockedStatus);
+    if (newLockedStatus) {
+        const today = new Date().toDateString();
+        setAttendanceLockedDate(today);
+        localStorage.setItem('attendanceLockedDate', today);
+    } else {
+        setAttendanceLockedDate(null);
+        localStorage.removeItem('attendanceLockedDate');
+    }
+    localStorage.setItem('isAttendanceLocked', JSON.stringify(newLockedStatus));
+    addNotification(`Attendance ${newLockedStatus ? 'Locked' : 'Unlocked'}!`)
+  }
+
   const removeStudent = (id: string) => {
     if (!window.confirm('Are you sure you want to delete this student?')) return;
     const updated = students.filter(s => s.id !== id);
@@ -791,6 +902,17 @@ export default function App() {
         setSelectedStudentIds([]);
         addNotification('Students deleted!');
     }
+  };
+
+  const handlePhotoUpdate = (studentId: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const photoUrl = e.target?.result as string;
+        const updated = students.map(s => s.id === studentId ? { ...s, photoUrl } : s);
+        setStudents(updated);
+        localStorage.setItem('students_list', JSON.stringify(updated));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleBulkUpdate = () => {
@@ -969,6 +1091,16 @@ export default function App() {
     a.click();
   };
 
+  const handleDownloadStudentJSON = () => {
+    const jsonContent = JSON.stringify(students, null, 2);
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_list.json';
+    a.click();
+  };
+
   const handleDownloadStudentCSV = () => {
     const headers = ["ID", "Class", "Section", "Name"];
     const rows = students.map(s => [s.id, s.className, s.section, s.name || '']);
@@ -1084,13 +1216,19 @@ export default function App() {
                 <h3 className="text-4xl font-serif font-bold text-center mb-16">Key Features</h3>
                 <div className="grid md:grid-cols-3 gap-8">
                     {['Face Recognition Attendance', 'Secure Admin Dashboard', 'Detailed Reporting'].map((feature, i) => (
-                        <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.5 }}
+                    key={i} 
+                    className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100"
+                  >
                             <div className="size-12 bg-emerald-100 rounded-lg mb-6 flex items-center justify-center">
                                 <CheckCircle className="size-6 text-emerald-600" />
                             </div>
                             <h4 className="text-xl font-bold mb-3">{feature}</h4>
                             <p className="text-slate-600 text-sm">Empowering schools with reliable, automated attendance tracking solutions.</p>
-                        </div>
+                        </motion.div>
                     ))}
                 </div>
              </section>
@@ -1118,7 +1256,12 @@ export default function App() {
                   </div>
               </header>
               <main className="max-w-5xl mx-auto space-y-10">
-                  <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.5 }}
+                    className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100"
+                  >
                       <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
                           <FileText className="size-6 text-[#2563EB]" /> Class Attendance Records
                       </h2>
@@ -1141,11 +1284,12 @@ export default function App() {
                                         const d = new Date(dt.timestamp);
                                         return dt.studentId === s.id && d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
                                     }).length;
-                                    const totalSchoolDays = new Set(attendanceRecords.filter(dt => {
+                                    const localTotalDays = new Set(attendanceRecords.filter(dt => {
                                         const d = new Date(dt.timestamp);
                                         return d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
                                     }).map(dt => new Date(dt.timestamp).toDateString())).size;
-                                    const percentage = totalSchoolDays > 0 ? Math.round((markedCount / totalSchoolDays) * 100) : 0;
+                                    const attendanceCount = attendanceRecords.filter(r => r.studentId === s.id).length;
+                                    const percentage = totalSchoolDays > 0 ? Math.round((attendanceCount / totalSchoolDays) * 100) : 0;
                                     return (
                                         <tr key={s.id} className={`border-b ${marked ? 'bg-emerald-50' : 'bg-red-50'}`}>
                                             <td className="py-4 font-bold text-[#0F172A]">{s.id}</td>
@@ -1182,7 +1326,7 @@ export default function App() {
                             </tbody>
                         </table>
                       </div>
-                  </div>
+                  </motion.div>
               </main>
               <Footer />
           </div>
@@ -1194,6 +1338,12 @@ export default function App() {
       return (
         <>
           <NotificationToast notifications={notifications} />
+          <FloatingQuickActionMenu 
+            onAddStudent={addStudent}
+            onGenerateReport={() => generatePDF(students[0]?.className || 'N/A')}
+            onToggleAttendanceLock={toggleAttendanceLock}
+            isLocked={isAttendanceLocked}
+          />
           <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900 p-4 md:p-8 font-sans">
               <header className="max-w-5xl mx-auto flex justify-between items-center mb-10 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                   <h1 className="text-3xl font-serif font-bold text-[#0F172A] flex items-center gap-3"><GraduationCap className="size-8 text-[#2563EB]" /> Admin Dashboard</h1>
@@ -1269,6 +1419,10 @@ export default function App() {
                             <input type="number" value={attendanceThreshold} onChange={(e) => { const val = parseInt(e.target.value); setAttendanceThreshold(val); localStorage.setItem('attendance_threshold', JSON.stringify(val)); }} className="px-4 py-3 rounded-lg border border-slate-200 font-bold w-24" />
                         </div>
                         <div className="flex items-center gap-4">
+                            <label className="font-bold text-[#0F172A]">Total School Days:</label>
+                            <input type="number" value={totalSchoolDays} onChange={(e) => { const val = parseInt(e.target.value); setTotalSchoolDays(val); localStorage.setItem('totalSchoolDays', JSON.stringify(val)); }} className="px-4 py-3 rounded-lg border border-slate-200 font-bold w-24" />
+                        </div>
+                        <div className="flex items-center gap-4">
                             <label className="font-bold text-[#0F172A]">Attendance Lock:</label>
                              <button onClick={() => {
                                   const newLockedStatus = !isAttendanceLocked;
@@ -1303,47 +1457,74 @@ export default function App() {
 
                 <div className="grid md:grid-cols-2 gap-8">
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-                      <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
-                          <BarChart3 className="size-6 text-[#2563EB]" /> Attendance Trends
+                      <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center justify-between gap-3">
+                          <span className='flex items-center gap-3'><BarChart3 className="size-6 text-[#2563EB]" /> Attendance Trends</span>
+                          <select value={trendDays} onChange={e => setTrendDays(parseInt(e.target.value))} className="p-2 rounded-lg border border-slate-200 font-bold text-sm">
+                            <option value={7}>Last 7 Days</option>
+                            <option value={30}>Last 30 Days</option>
+                            <option value={90}>Last 90 Days</option>
+                          </select>
                       </h2>
-                       <div id="report-chart" className="h-[256px] w-[500px]">
-                          <ResponsiveContainer width={500} height={256}>
-                              <BarChart data={monthlyData}>
+                       <div id="report-chart" className="h-[256px] w-full">
+                          <ResponsiveContainer width="100%" height={256}>
+                              <LineChart data={getAttendanceTrendData(trendDays)}>
                                   <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="month" />
+                                  <XAxis dataKey="date" />
                                   <YAxis />
                                   <Tooltip />
                                   <Legend />
-                                  <Bar dataKey="count" fill="#2563EB" />
-                              </BarChart>
+                                  <Line type="monotone" dataKey="count" stroke="#2563EB" strokeWidth={2} />
+                              </LineChart>
                           </ResponsiveContainer>
                       </div>
                     </motion.div>
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
                       <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
-                          <BarChart3 className="size-6 text-[#2563EB]" /> Today's Attendance
+                          <BarChart3 className="size-6 text-[#2563EB]" /> Attendance Rate by Class
                       </h2>
-                      <div className="h-[256px] w-[500px]">
-                          <ResponsiveContainer width={500} height={256}>
-                              <PieChart>
-                                  <Pie data={todayAttendanceData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label>
-                                      {todayAttendanceData.map((entry, index) => (
-                                          <Cell key={`cell-${index}`} fill={index === 0 ? '#16A34A' : '#DC2626'} />
-                                      ))}
-                                  </Pie>
+                      <div className="h-[256px] w-full">
+                          <ResponsiveContainer width="100%" height={256}>
+                              <BarChart data={getClassAttendanceData()}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="name" />
+                                  <YAxis unit="%" />
                                   <Tooltip />
-                                  <Legend />
-                              </PieChart>
+                                  <Bar dataKey="rate" fill="#2563EB" />
+                              </BarChart>
                           </ResponsiveContainer>
                       </div>
                     </motion.div>
                 </div>
 
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 col-span-full mt-8">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 col-span-full">
                     <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6 flex items-center gap-3">
-                        <FileText className="size-6 text-[#2563EB]" /> Attendance Summary (Current Month)
+                        <School className="size-6 text-[#2563EB]" /> Class Statistics
                     </h2>
-                    <div className="grid md:grid-cols-2 gap-8">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="text-left text-xs uppercase tracking-widest text-[#0F172A]/50 border-b border-slate-100">
+                                <th className="pb-4">Class</th>
+                                <th className="pb-4">Total Sections</th>
+                                <th className="pb-4">Total Students</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Array.from(new Set(students.map(s => s.className))).map(className => {
+                                const classStudents = students.filter(s => s.className === className);
+                                const sections = new Set(classStudents.map(s => s.section));
+                                return (
+                                    <tr key={className} className="border-b border-slate-50">
+                                        <td className="py-4 font-bold">{className}</td>
+                                        <td className="py-4">{sections.size}</td>
+                                        <td className="py-4">{classStudents.length}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </motion.div>
+                
+                <div className="grid md:grid-cols-2 gap-8">
                         <div>
                             <h3 className="font-bold text-emerald-600 mb-4">Top 5 Students</h3>
                             {topStudents.map(s => (
@@ -1363,7 +1544,6 @@ export default function App() {
                             ))}
                         </div>
                     </div>
-                </motion.div>
 
                 <ReportSection students={students} attendanceRecords={attendanceRecords} />
               </main>
@@ -1442,10 +1622,13 @@ export default function App() {
                         </select>
                         <input type="text" value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} placeholder="Search..." className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-2 font-bold text-sm" />
                         <button onClick={handleDownloadStudentCSV} className="bg-[#16A34A] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#15803d] flex items-center gap-2 glow-button text-sm"><Download size={16}/> CSV</button>
+                        <button onClick={handleDownloadStudentJSON} className="bg-[#7C3AED] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#6D28D9] flex items-center gap-2 glow-button text-sm"><Download size={16}/> JSON</button>
                       </div>
                   </h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).sort((a,b) => {
+                  <div 
+                    className="grid grid-cols-2 md:grid-cols-3 gap-6"
+                  >
+                    {students.filter(s => s.id.toLowerCase().includes(studentSearchQuery.toLowerCase()) || (s.name && s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))).sort((a,b) => {
                           if (studentSort === 'name-asc') return (a.name || '').localeCompare(b.name || '');
                           if (studentSort === 'name-desc') return (b.name || '').localeCompare(a.name || '');
                           return 0;
@@ -1453,7 +1636,28 @@ export default function App() {
                           const attendanceCount = attendanceRecords.filter(r => r.studentId === s.id).length;
                           const isLow = attendanceCount < attendanceThreshold;
                           return (
-                          <motion.div layout key={s.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(37, 99, 235, 0.2)" }} onClick={() => userRole === 'admin' && setExpandedStudentId(expandedStudentId === s.id ? null : s.id)} className={`cursor-pointer student-card p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}>
+                          <motion.div 
+                            initial="hidden"
+                            animate="visible"
+                            variants={{
+                                hidden: { opacity: 0 },
+                                visible: { 
+                                    opacity: 1,
+                                    transition: { staggerChildren: 0.1 }
+                                }
+                            }}
+                            key={s.id}
+                          >
+                          <motion.div 
+                            variants={{
+                                hidden: { opacity: 0, y: 20 },
+                                visible: { opacity: 1, y: 0 }
+                            }}
+                            layout 
+                            whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(37, 99, 235, 0.2)" }} 
+                            onClick={() => userRole === 'admin' && setExpandedStudentId(expandedStudentId === s.id ? null : s.id)} 
+                            className={`cursor-pointer student-card p-4 rounded-lg border relative ${isLow ? 'bg-red-50 border-red-200' : 'bg-[#F8FAFC] border-slate-200'}`}
+                          >
                               <input type="checkbox" className="absolute top-0 left-0 w-11 h-11 accent-[#2563EB] cursor-pointer" checked={selectedStudentIds.includes(s.id)} onChange={e => {
                                   if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
                                   else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
@@ -1482,6 +1686,7 @@ export default function App() {
                                        <p>Academic Details: {s.academicDetails || 'None available'}</p>
                                    </div>
                                )}
+                          </motion.div>
                           </motion.div>
                       )})}
                   </div>
@@ -1596,8 +1801,19 @@ export default function App() {
         {showFaceScanner ? (
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center">
             <h2 className="text-2xl font-serif font-bold text-[#0F172A] mb-6">Camera Attendance</h2>
-            <div className="relative mx-auto w-[320px] h-[240px] mb-6">
-                <video ref={videoRef} autoPlay playsInline className="rounded-xl bg-[#0F172A] w-full h-full" width="320" height="240"></video>
+            <div className="relative mx-auto w-[320px] h-[240px] mb-6 overflow-hidden rounded-xl bg-[#0F172A]">
+                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" width="320" height="240"></video>
+                <motion.div 
+                    className="absolute top-0 left-0 w-full h-1 bg-green-500 shadow-[0_0_10px_2px_rgba(34,197,94,0.8)]"
+                    animate={{ top: ['0%', '100%', '0%'] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                />
+                <button 
+                  onClick={() => setScannerState({ stillCounter: 0, prevFacePosition: { x: 0, y: 0 } })} 
+                  className="absolute bottom-2 right-2 bg-white/20 hover:bg-white/40 text-white text-xs px-2 py-1 rounded backdrop-blur-sm transition-colors"
+                >
+                  Recalibrate
+                </button>
             </div>
             <p className="mb-4 text-[#0F172A]/70 font-bold">{message}</p>
              <button onClick={() => {setShowFaceScanner(false); setMessage('')}} className="ml-4 text-slate-500 font-bold glow-button">Close</button>
@@ -1626,6 +1842,30 @@ export default function App() {
                  setIsEditingProfile(true);
              }} className="text-sm bg-[#2563EB] text-white px-4 py-2 rounded-lg glow-button">Edit</button>
            </h2>
+
+           {(() => {
+             const student = students.find(s => s.id === loggedInId);
+             if (!student) return null;
+             const count = attendanceRecords.filter(r => {
+                 const d = new Date(r.timestamp);
+                 return r.studentId === student.id && d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
+             }).length;
+             const progress = Math.min(100, (count / attendanceThreshold) * 100);
+             const remaining = Math.max(0, attendanceThreshold - count);
+             return (
+               <div className="mb-8">
+                 <div className="flex justify-between items-center mb-2">
+                   <span className="font-bold text-slate-700">Attendance Target</span>
+                   <span className="text-sm font-bold text-slate-500">{count} / {attendanceThreshold} days</span>
+                 </div>
+                 <div className="h-4 bg-slate-200 rounded-full overflow-hidden">
+                   <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                 </div>
+                 {remaining > 0 && <p className="text-sm text-slate-500 mt-2">{remaining} more days needed to reach threshold.</p>}
+               </div>
+             );
+           })()}
+
            {isEditingProfile ? (
               <div className="space-y-4">
                  <input type="text" placeholder="Name" value={profileData?.name || ''} onChange={e => setProfileData({...profileData!, name: e.target.value})} className="w-full px-4 py-2 border rounded" />
@@ -1650,6 +1890,15 @@ export default function App() {
                 <p>Email: {students.find(s => s.id === loggedInId)?.email || 'Not set'}</p>
                 <p>Phone: {students.find(s => s.id === loggedInId)?.phone || 'Not set'}</p>
                 <p>Academic: {students.find(s => s.id === loggedInId)?.academicDetails || 'Not set'}</p>
+                <div className="col-span-2 mt-4">
+                    <div className="flex justify-between text-sm font-bold mb-2">
+                       <span>Attendance Streak</span>
+                       <span>{calculateStreak(loggedInId || '')} Days</span>
+                    </div>
+                    <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
+                       <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(calculateStreak(loggedInId || '') * 5, 100)}%` }} className="h-full bg-orange-500 rounded-full" />
+                    </div>
+                </div>
               </div>
            )}
         </div>
@@ -1667,6 +1916,8 @@ export default function App() {
              ))}
           </div>
         </div>
+        
+        <AttendanceLeaderboard students={students} attendanceRecords={attendanceRecords} />
 
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-center mb-8">
