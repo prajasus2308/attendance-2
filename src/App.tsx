@@ -523,6 +523,28 @@ export default function App() {
     });
   };
 
+  const generateStudentPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Attendance History - Student ${loggedInId}`, 10, 10);
+    
+    const data = attendanceRecords
+        .filter(r => {
+            let match = r.studentId === loggedInId;
+            if (filterPeriod !== 'all') {
+                const recordDate = new Date(r.timestamp);
+                const now = new Date();
+                const diffDays = (now.getTime() - recordDate.getTime()) / (1000 * 3600 * 24);
+                if (filterPeriod === 'week') match = match && diffDays <= 7;
+                else if (filterPeriod === 'month') match = match && diffDays <= 30;
+            }
+            return match;
+        })
+        .map(r => [r.studentId, r.timestamp, 'Present']);
+
+    autoTable(doc, { head: [['ID', 'Date & Time', 'Status']], body: data });
+    doc.save(`AttendanceHistory_${loggedInId}.pdf`);
+  };
+
   const generatePDF = async (className: string) => {
     const doc = new jsPDF();
     doc.text(`Monthly Attendance Report - Class ${className}`, 10, 10);
@@ -1925,6 +1947,9 @@ export default function App() {
                 <Clock className="size-6 text-[#2563EB]" /> Attendance History
             </h2>
             <div className="flex gap-2">
+                <button onClick={generateStudentPDF} className="bg-[#16A34A] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#15803d] transition-colors">
+                    Export PDF
+                </button>
                 <button onClick={() => window.print()} className="bg-[#2563EB] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#1D4ED8] transition-colors">
                     Print
                 </button>
